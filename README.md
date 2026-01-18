@@ -1,42 +1,63 @@
 # NCNN Android YOLO26
 
-基于 NCNN 框架的 YOLO26n 目标检测 Android 应用。
+Real-time object detection Android application using YOLO26n with NCNN framework.
 
-## 构建步骤
+[![Android](https://img.shields.io/badge/Platform-Android-green.svg)](https://developer.android.com)
+[![NCNN](https://img.shields.io/badge/Framework-NCNN-blue.svg)](https://github.com/Tencent/ncnn)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-### 1. 导出 YOLO26n NCNN 模型
+## Features
+
+- 🚀 Real-time object detection with YOLO26n
+- 📱 Supports both CPU and GPU (Vulkan) inference
+- 🎯 80 COCO classes detection
+- 📷 Front/Back camera switching
+- ⚡ Optimized for mobile devices
+
+## Performance
+
+| Device | CPU FPS | GPU FPS |
+|--------|---------|---------|
+| Huawei P40 (Kirin 990) | ~10 | ~4 |
+| Solana Seeker (Dimensity 7300) | ~13 | ~4* |
+
+*Note: Some MediaTek GPUs may have Vulkan driver precision issues. CPU mode is recommended for best accuracy.
+
+## Build Instructions
+
+### 1. Export YOLO26n NCNN Model
 
 ```python
 from ultralytics import YOLO
 
-# 加载模型
+# Load model
 model = YOLO("yolo26n.pt")
 
-# 导出为 NCNN 格式
+# Export to NCNN format
 model.export(format="ncnn")
 ```
 
-将生成的 `yolo26n.param` 和 `yolo26n.bin` 文件复制到 `app/src/main/assets/` 目录。
+Copy the generated `yolo26n.ncnn.param` and `yolo26n.ncnn.bin` files to `app/src/main/assets/`.
 
-### 2. 下载依赖库
+### 2. Download Dependencies
 
 #### NCNN
 
-从 [ncnn releases](https://github.com/Tencent/ncnn/releases) 下载：
+Download from [ncnn releases](https://github.com/Tencent/ncnn/releases):
 - `ncnn-YYYYMMDD-android-vulkan.zip`
 
-解压到 `app/src/main/jni/` 目录，重命名为 `ncnn-android-vulkan`。
+Extract to `app/src/main/jni/` and rename to `ncnn-android-vulkan`.
 
 #### OpenCV Mobile
 
-从 [opencv-mobile releases](https://github.com/nihui/opencv-mobile/releases) 下载：
+Download from [opencv-mobile releases](https://github.com/nihui/opencv-mobile/releases):
 - `opencv-mobile-4.10.0-android.zip`
 
-解压到 `app/src/main/jni/` 目录。
+Extract to `app/src/main/jni/`.
 
-### 3. 目录结构
+### 3. Directory Structure
 
-确保 JNI 目录结构如下：
+Ensure JNI directory structure:
 
 ```
 app/src/main/jni/
@@ -46,55 +67,63 @@ app/src/main/jni/
 ├── yolo26ncnn.cpp
 ├── ncnn-android-vulkan/
 │   ├── arm64-v8a/
-│   └── armeabi-v7a/
+│   ├── armeabi-v7a/
+│   ├── x86/
+│   └── x86_64/
 └── opencv-mobile-4.10.0-android/
     └── sdk/
 ```
 
-### 4. 模型文件
+### 4. Model Files
 
-将模型文件放入 assets 目录：
+Place model files in assets directory:
 
 ```
 app/src/main/assets/
-├── yolo26n.param
-└── yolo26n.bin
+├── yolo26n.ncnn.param
+└── yolo26n.ncnn.bin
 ```
 
-### 5. 构建项目
+### 5. Build Project
 
-使用 Android Studio 打开项目，或使用命令行：
+Open with Android Studio or build via command line:
 
 ```bash
 ./gradlew assembleDebug
 ```
 
-## 注意事项
+## GPU Acceleration Notes
 
-### 模型输出层名称
+- Requires Vulkan-capable device
+- GPU mode forces FP32 for better accuracy
+- First GPU inference may have shader compilation delay
+- Some low/mid-range GPUs (Mali-G5xx, Mali-G6xx on MediaTek) may have precision issues - use CPU mode instead
 
-导出的 NCNN 模型输出层名称可能不同，需要根据实际的 `.param` 文件调整 `yolo.cpp` 中的输出层名称：
+## Customization
+
+### Custom Classes
+
+If using a custom-trained model, modify the `class_names` array in `yolo.h`.
+
+### Confidence Threshold
+
+Default threshold is 0.5. Adjust in `yolo.h`:
 
 ```cpp
-ex.extract("output0", out);  // 可能需要修改为实际名称
-ex.extract("output1", out);
-ex.extract("output2", out);
+int detect(..., float prob_threshold = 0.50f, ...);
 ```
 
-查看 `.param` 文件末尾的输出层名称进行对应修改。
-
-### GPU 加速
-
-- 需要设备支持 Vulkan
-- 小模型在 CPU 上可能比 GPU 更快
-- 首次 GPU 推理会有 shader 编译延迟
-
-## 自定义类别
-
-如果使用自定义数据集训练的模型，需要修改 `yolo.h` 中的 `class_names` 数组。
-
-## 参考项目
+## References
 
 - [ncnn-android-yolov8](https://github.com/nihui/ncnn-android-yolov8)
-- [ncnn-android-yolov11](https://github.com/gaoxumustwin/ncnn-android-yolov11)
 - [NCNN](https://github.com/Tencent/ncnn)
+- [OpenCV Mobile](https://github.com/nihui/opencv-mobile)
+- [Ultralytics YOLO](https://github.com/ultralytics/ultralytics)
+
+## License
+
+This project is licensed under the MIT License.
+
+---
+
+[中文文档](README_CN.md)
