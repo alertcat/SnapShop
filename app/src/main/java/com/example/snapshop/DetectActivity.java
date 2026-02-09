@@ -1,4 +1,4 @@
-package com.example.yolo26ncnn;
+package com.example.snapshop;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
@@ -11,10 +11,7 @@ import android.graphics.YuvImage;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.Size;
-import android.view.View;
-import android.widget.AdapterView;
 import android.widget.Button;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -36,8 +33,8 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class MainActivity extends AppCompatActivity {
-    private static final String TAG = "Yolo26Ncnn";
+public class DetectActivity extends AppCompatActivity {
+    private static final String TAG = "DetectActivity";
     private static final int REQUEST_PERMISSION = 100;
     private static final String[] REQUIRED_PERMISSIONS = {
             Manifest.permission.CAMERA
@@ -49,11 +46,19 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvResult;
     private Button btnSwitchCamera;
     private Button btnStartStop;
-    private Spinner spinnerModel;
-    private Spinner spinnerDevice;
+    private Button btnConnectWallet;
+    private Button btnMemoOnChain;
+    private TextView tvWalletStatus;
+
+    // Store current detection results for on-chain memo
+    private Yolo26Ncnn.Obj[] currentObjects = null;
+
+    // Store last transaction info
+    private String lastTxSignature = null;
+    private String lastExplorerUrl = null;
 
     private int currentModel = 0;
-    private int currentDevice = 0; // 0=CPU, 1=GPU
+    private int currentDevice = 0; // Use CPU only (Seeker GPU performance is insufficient)
     private boolean isDetecting = false;
     private boolean isFrontCamera = false;
 
@@ -61,51 +66,38 @@ public class MainActivity extends AppCompatActivity {
     private ProcessCameraProvider cameraProvider;
 
     private long lastDetectTime = 0;
-    private static final long DETECT_INTERVAL = 100; // 检测间隔 100ms
+    private static final long DETECT_INTERVAL = 100; // Detection interval 100ms
+
+    // Solana Wallet Helper (Kotlin)
+    private WalletHelper walletHelper;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_detect);
 
         previewView = findViewById(R.id.previewView);
         overlayView = findViewById(R.id.overlayView);
         tvResult = findViewById(R.id.tvResult);
         btnSwitchCamera = findViewById(R.id.btnSwitchCamera);
         btnStartStop = findViewById(R.id.btnStartStop);
-        spinnerModel = findViewById(R.id.spinnerModel);
-        spinnerDevice = findViewById(R.id.spinnerDevice);
+        btnConnectWallet = findViewById(R.id.btnConnectWallet);
+        btnMemoOnChain = findViewById(R.id.btnMemoOnChain);
+        tvWalletStatus = findViewById(R.id.tvWalletStatus);
 
         // Set PreviewView to fill the container (crop to fit)
         previewView.setScaleType(PreviewView.ScaleType.FILL_CENTER);
 
         cameraExecutor = Executors.newSingleThreadExecutor();
 
-        // Model selection
-        spinnerModel.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                currentModel = position;
-                reloadModel();
-            }
+        // Initialize Solana Wallet Helper
+        walletHelper = new WalletHelper(this);
 
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-            }
-        });
+        // Connect Wallet button
+        btnConnectWallet.setOnClickListener(v -> handleWalletClick());
 
-        // Device selection (CPU/GPU)
-        spinnerDevice.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                currentDevice = position;
-                reloadModel();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-            }
-        });
+        // Memo on-chain button (send detection results to blockchain)
+        btnMemoOnChain.setOnClickListener(v -> handleMemoOnChain());
 
         // Switch camera button
         btnSwitchCamera.setOnClickListener(v -> {
@@ -124,7 +116,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // 检查权限
+        // Check permissions
         if (allPermissionsGranted()) {
             reloadModel();
             startCamera();
@@ -157,15 +149,181 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void reloadModel() {
-        boolean ret = yolo26Ncnn.loadModel(getAssets(), currentModel, currentDevice);
+        // Use CPU only, Seeker GPU performance causes detection boxes to drift
+        boolean ret = yolo26Ncnn.loadModel(getAssets(), currentModel, 0);
         if (!ret) {
             Log.e(TAG, "Failed to load model");
             Toast.makeText(this, "Failed to load model", Toast.LENGTH_SHORT).show();
         } else {
-            String device = currentDevice == 0 ? "CPU" : "GPU (FP32)";
-            Log.d(TAG, "Model loaded: yolo26n on " + device);
+            Log.d(TAG, "Model loaded: yolo26n on CPU");
         }
     }
+
+    /**
+     * Handle wallet button click
+     */
+    private void handleWalletClick() {
+        if (walletHelper.isConnected()) {
+            // Already connected, disconnect
+            walletHelper.disconnect(walletCallback);
+        } else {
+            // Not connected, connect
+            btnConnectWallet.setEnabled(false);
+            btnConnectWallet.setText("Connecting...");
+            walletHelper.connect(walletCallback);
+        }
+    }
+
+    /**
+     * Wallet callback
+     */
+    private final WalletHelper.WalletCallback walletCallback = new WalletHelper.WalletCallback() {
+        @Override
+        public void onConnected(@NonNull String address) {
+            updateWalletUI(true);
+            Toast.makeText(DetectActivity.this, "Wallet connected!", Toast.LENGTH_SHORT).show();
+        }
+
+        @Override
+        public void onDisconnected() {
+            updateWalletUI(false);
+            Toast.makeText(DetectActivity.this, "Wallet disconnected", Toast.LENGTH_SHORT).show();
+        }
+
+        @Override
+        public void onError(@NonNull String message) {
+            btnConnectWallet.setEnabled(true);
+            btnConnectWallet.setText("Connect Wallet");
+            Toast.makeText(DetectActivity.this, "Error: " + message, Toast.LENGTH_SHORT).show();
+        }
+
+        @Override
+        public void onNoWalletFound() {
+            btnConnectWallet.setEnabled(true);
+            btnConnectWallet.setText("Connect Wallet");
+            Toast.makeText(DetectActivity.this, "No wallet app found. Please install Seed Vault Wallet.", Toast.LENGTH_LONG).show();
+        }
+    };
+
+    /**
+     * Update wallet UI state
+     */
+    private void updateWalletUI(boolean connected) {
+        if (connected) {
+            btnConnectWallet.setEnabled(true);
+            btnConnectWallet.setText("Disconnect");
+            btnConnectWallet.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF4CAF50)); // Green
+
+            tvWalletStatus.setText(walletHelper.getShortAddress());
+            tvWalletStatus.setTextColor(0xFF4CAF50); // Green
+        } else {
+            btnConnectWallet.setEnabled(true);
+            btnConnectWallet.setText("Connect Wallet");
+            btnConnectWallet.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF512DA8)); // Purple
+            tvWalletStatus.setText("Not Connected");
+            tvWalletStatus.setTextColor(0xFF888888); // Gray
+        }
+    }
+
+    /**
+     * Handle Memo on-chain button click
+     * Send detection results (class, confidence, bbox) on-chain, no image upload (privacy protection)
+     */
+    private void handleMemoOnChain() {
+        // Check if wallet is connected
+        if (!walletHelper.isConnected()) {
+            Toast.makeText(this, "Please connect wallet first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Check if we have detection results
+        if (currentObjects == null || currentObjects.length == 0) {
+            Toast.makeText(this, "No objects detected. Start detection first.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Convert detection results to DetectionData list
+        java.util.List<WalletHelper.DetectionData> detections = new java.util.ArrayList<>();
+        for (Yolo26Ncnn.Obj obj : currentObjects) {
+            if (obj.label != null) {
+                detections.add(new WalletHelper.DetectionData(
+                        obj.label,
+                        obj.prob,
+                        obj.x,
+                        obj.y,
+                        obj.w,
+                        obj.h
+                ));
+            }
+        }
+
+        if (detections.isEmpty()) {
+            Toast.makeText(this, "No valid detections", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Disable button during transaction
+        btnMemoOnChain.setEnabled(false);
+        btnMemoOnChain.setText("Sending...");
+
+        // Send detection data on-chain via Memo
+        walletHelper.sendDetectionMemo(detections, memoCallback);
+    }
+
+    /**
+     * Memo on-chain callback
+     */
+    private final WalletHelper.MemoCallback memoCallback = new WalletHelper.MemoCallback() {
+        @Override
+        public void onMemoStarted() {
+            runOnUiThread(() -> {
+                btnMemoOnChain.setText("Preparing...");
+            });
+        }
+
+        @Override
+        public void onMemoProgress(@NonNull String status) {
+            runOnUiThread(() -> {
+                btnMemoOnChain.setText(status.length() > 10 ? status.substring(0, 10) + ".." : status);
+            });
+        }
+
+        @Override
+        public void onMemoSuccess(@NonNull String signature, @NonNull String explorerUrl, @NonNull String memoData) {
+            runOnUiThread(() -> {
+                lastTxSignature = signature;
+                lastExplorerUrl = explorerUrl;
+
+                btnMemoOnChain.setEnabled(true);
+                btnMemoOnChain.setText("On-Chain");
+
+                String shortSig = signature.length() > 8 ? signature.substring(0, 8) + "..." : signature;
+
+                Toast.makeText(DetectActivity.this,
+                        "Success! TX: " + shortSig,
+                        Toast.LENGTH_LONG).show();
+
+                // Update result display
+                tvResult.setText("TX sent: " + shortSig + "\nView on Solana Explorer");
+
+                Log.d(TAG, "Memo on-chain success!");
+                Log.d(TAG, "Signature: " + signature);
+                Log.d(TAG, "Explorer: " + explorerUrl);
+                Log.d(TAG, "Memo data: " + memoData);
+            });
+        }
+
+        @Override
+        public void onMemoError(@NonNull String message) {
+            runOnUiThread(() -> {
+                btnMemoOnChain.setEnabled(true);
+                btnMemoOnChain.setText("On-Chain");
+                Toast.makeText(DetectActivity.this,
+                        "Failed: " + message,
+                        Toast.LENGTH_SHORT).show();
+            });
+        }
+    };
 
     private void startCamera() {
         ListenableFuture<ProcessCameraProvider> cameraProviderFuture =
@@ -184,23 +342,23 @@ public class MainActivity extends AppCompatActivity {
     private void bindCameraUseCases() {
         if (cameraProvider == null) return;
 
-        // 解绑之前的用例
+        // Unbind previous use cases
         cameraProvider.unbindAll();
 
-        // 选择摄像头
+        // Select camera
         CameraSelector cameraSelector = new CameraSelector.Builder()
                 .requireLensFacing(isFrontCamera ?
                         CameraSelector.LENS_FACING_FRONT :
                         CameraSelector.LENS_FACING_BACK)
                 .build();
 
-        // 预览
+        // Preview
         Preview preview = new Preview.Builder()
                 .setTargetResolution(new Size(640, 480))
                 .build();
         preview.setSurfaceProvider(previewView.getSurfaceProvider());
 
-        // 图像分析
+        // Image analysis
         ImageAnalysis imageAnalysis = new ImageAnalysis.Builder()
                 .setTargetResolution(new Size(640, 480))
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
@@ -222,7 +380,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        // 控制检测频率
+        // Control detection frequency
         long currentTime = System.currentTimeMillis();
         if (currentTime - lastDetectTime < DETECT_INTERVAL) {
             image.close();
@@ -231,14 +389,14 @@ public class MainActivity extends AppCompatActivity {
         lastDetectTime = currentTime;
 
         try {
-            // 将 ImageProxy 转换为 Bitmap
+            // Convert ImageProxy to Bitmap
             Bitmap bitmap = imageProxyToBitmap(image);
             if (bitmap == null) {
                 image.close();
                 return;
             }
 
-            // 设置预览尺寸
+            // Set preview size
             int previewWidth = bitmap.getWidth();
             int previewHeight = bitmap.getHeight();
 
@@ -246,6 +404,9 @@ public class MainActivity extends AppCompatActivity {
             long startTime = System.currentTimeMillis();
             Yolo26Ncnn.Obj[] objects = yolo26Ncnn.detect(bitmap);
             long inferenceTime = System.currentTimeMillis() - startTime;
+
+            // Store current detection results for memo
+            currentObjects = objects;
 
             // Update UI
             final int objectCount = objects != null ? objects.length : 0;
@@ -282,8 +443,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * 将 ImageProxy (YUV_420_888) 正确转换为 Bitmap
-     * 关键：正确处理 rowStride 和 pixelStride
+     * Convert ImageProxy (YUV_420_888) to Bitmap correctly
+     * Key: Handle rowStride and pixelStride properly
      */
     private Bitmap imageProxyToBitmap(ImageProxy image) {
         try {
@@ -291,32 +452,32 @@ public class MainActivity extends AppCompatActivity {
             int width = image.getWidth();
             int height = image.getHeight();
 
-            // Y 平面
+            // Y plane
             ByteBuffer yBuffer = planes[0].getBuffer();
             int yRowStride = planes[0].getRowStride();
             int yPixelStride = planes[0].getPixelStride();
 
-            // U 平面
+            // U plane
             ByteBuffer uBuffer = planes[1].getBuffer();
             int uvRowStride = planes[1].getRowStride();
             int uvPixelStride = planes[1].getPixelStride();
 
-            // V 平面
+            // V plane
             ByteBuffer vBuffer = planes[2].getBuffer();
 
-            // NV21 格式: Y 平面 + VU 交错平面
-            // 总大小 = width * height * 1.5
+            // NV21 format: Y plane + VU interleaved plane
+            // Total size = width * height * 1.5
             int nv21Size = width * height + (width * height / 2);
             byte[] nv21 = new byte[nv21Size];
 
-            // 复制 Y 平面 (考虑 rowStride)
+            // Copy Y plane (considering rowStride)
             int yPos = 0;
             if (yRowStride == width && yPixelStride == 1) {
-                // 快速路径：直接复制
+                // Fast path: direct copy
                 yBuffer.get(nv21, 0, width * height);
                 yPos = width * height;
             } else {
-                // 慢速路径：逐行复制
+                // Slow path: copy row by row
                 for (int row = 0; row < height; row++) {
                     yBuffer.position(row * yRowStride);
                     for (int col = 0; col < width; col++) {
@@ -326,30 +487,30 @@ public class MainActivity extends AppCompatActivity {
                 yBuffer.rewind();
             }
 
-            // 复制 VU 交错平面
-            // NV21 要求 V 在前，U 在后，交错存储
+            // Copy VU interleaved plane
+            // NV21 requires V first, U second, interleaved
             int uvHeight = height / 2;
             int uvWidth = width / 2;
             int uvPos = width * height;
 
             if (uvPixelStride == 2 && uvRowStride == width) {
-                // 快速路径：UV 已经是交错的 (常见情况)
-                // planes[2] (V) 已经是 VUVU... 格式
+                // Fast path: UV already interleaved (common case)
+                // planes[2] (V) is already VUVU... format
                 vBuffer.position(0);
                 int uvSize = Math.min(vBuffer.remaining(), width * height / 2);
                 vBuffer.get(nv21, uvPos, uvSize);
             } else if (uvPixelStride == 1) {
-                // 慢速路径：U 和 V 是分开的平面，需要手动交错
+                // Slow path: U and V are separate planes, need manual interleave
                 for (int row = 0; row < uvHeight; row++) {
                     for (int col = 0; col < uvWidth; col++) {
                         int uvIndex = row * uvRowStride + col * uvPixelStride;
-                        // NV21: V 先，U 后
+                        // NV21: V first, U second
                         nv21[uvPos++] = vBuffer.get(uvIndex);  // V
                         nv21[uvPos++] = uBuffer.get(uvIndex);  // U
                     }
                 }
             } else {
-                // 通用路径
+                // Generic path
                 for (int row = 0; row < uvHeight; row++) {
                     for (int col = 0; col < uvWidth; col++) {
                         int uvIndex = row * uvRowStride + col * uvPixelStride;
@@ -359,7 +520,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
-            // 使用 YuvImage 转换为 JPEG，然后解码为 Bitmap
+            // Use YuvImage to convert to JPEG, then decode to Bitmap
             YuvImage yuvImage = new YuvImage(nv21, ImageFormat.NV21, width, height, null);
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             yuvImage.compressToJpeg(new Rect(0, 0, width, height), 95, out);
@@ -367,14 +528,14 @@ public class MainActivity extends AppCompatActivity {
 
             Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
 
-            // 旋转图像
+            // Rotate image
             Matrix matrix = new Matrix();
             int rotationDegrees = image.getImageInfo().getRotationDegrees();
             if (rotationDegrees != 0) {
                 matrix.postRotate(rotationDegrees);
             }
 
-            // 如果是前置摄像头，需要镜像翻转
+            // Mirror flip for front camera
             if (isFrontCamera) {
                 matrix.postScale(-1, 1);
             }

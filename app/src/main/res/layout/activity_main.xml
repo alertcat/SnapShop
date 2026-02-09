@@ -1,116 +1,166 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#000000">
+    android:background="#121212"
+    android:gravity="center">
 
-    <!-- Top Bar -->
-    <LinearLayout
+    <!-- App Title -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="SnapShop"
+        android:textColor="#FFFFFF"
+        android:textSize="36sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="See it. Find it. Buy it."
+        android:textColor="#AAAAAA"
+        android:textSize="16sp"
+        android:layout_marginBottom="32dp" />
+
+    <!-- Card 1: Detect & On-Chain -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardDetect"
         android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingHorizontal="12dp"
-        android:background="#1A1A1A">
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginBottom="16dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="8dp"
+        app:cardBackgroundColor="#1E1E2E">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Model: "
-            android:textColor="#FFFFFF"
-            android:textSize="14sp" />
-
-        <Spinner
-            android:id="@+id/spinnerModel"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:entries="@array/model_array" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:text="Device: "
-            android:textColor="#FFFFFF"
-            android:textSize="14sp" />
-
-        <Spinner
-            android:id="@+id/spinnerDevice"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:entries="@array/device_array" />
-
-    </LinearLayout>
-
-    <!-- Camera Preview (Fixed aspect ratio container) -->
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
-
-        <androidx.camera.view.PreviewView
-            android:id="@+id/previewView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_gravity="center" />
-
-        <!-- Overlay for detection boxes -->
-        <com.example.yolo26ncnn.OverlayView
-            android:id="@+id/overlayView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
-
-    </FrameLayout>
-
-    <!-- Bottom Panel (Fixed height) -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="140dp"
-        android:orientation="vertical"
-        android:background="#1A1A1A"
-        android:padding="12dp">
-
-        <!-- Control Buttons -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center">
+            android:orientation="vertical"
+            android:padding="24dp">
 
-            <Button
-                android:id="@+id/btnSwitchCamera"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_weight="1"
-                android:text="Switch Camera"
-                android:textAllCaps="false" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Detect &amp; On-Chain"
+                android:textColor="#BB86FC"
+                android:textSize="22sp"
+                android:textStyle="bold" />
 
-            <Button
-                android:id="@+id/btnStartStop"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_weight="1"
-                android:layout_marginStart="12dp"
-                android:text="Start Detect"
-                android:textAllCaps="false" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="YOLO26 real-time object detection\nRecord detections on Solana blockchain"
+                android:textColor="#CCCCCC"
+                android:textSize="14sp"
+                android:lineSpacingMultiplier="1.3" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="OPEN >"
+                android:textColor="#BB86FC"
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
         </LinearLayout>
 
-        <!-- Detection Results (Fixed height, scrollable) -->
-        <TextView
-            android:id="@+id/tvResult"
+    </androidx.cardview.widget.CardView>
+
+    <!-- Card 2: SnapShop Camera -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardShop"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginBottom="24dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="8dp"
+        app:cardBackgroundColor="#1E2E1E">
+
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SnapShop Camera"
+                android:textColor="#4CAF50"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Point camera at any object\nFind matching products on Amazon, eBay\nBuy with USDC via Solana Pay"
+                android:textColor="#CCCCCC"
+                android:textSize="14sp"
+                android:lineSpacingMultiplier="1.3" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="OPEN >"
+                android:textColor="#4CAF50"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+    </androidx.cardview.widget.CardView>
+
+    <!-- Wallet Connection Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="24dp"
+        android:layout_marginBottom="16dp">
+
+        <Button
+            android:id="@+id/btnConnectWallet"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
             android:layout_weight="1"
-            android:layout_marginTop="8dp"
-            android:text="Waiting for camera..."
-            android:textColor="#CCCCCC"
-            android:textSize="13sp"
-            android:maxLines="3"
-            android:ellipsize="end"
-            android:gravity="top" />
+            android:backgroundTint="#512DA8"
+            android:text="Connect Wallet"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/tvWalletStatus"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:text="Not Connected"
+            android:textColor="#888888"
+            android:textSize="12sp"
+            android:gravity="center"
+            android:ellipsize="middle"
+            android:singleLine="true" />
 
     </LinearLayout>
+
+    <!-- Footer -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Powered by Solana + YOLO26 + NCNN"
+        android:textColor="#555555"
+        android:textSize="11sp"
+        android:layout_marginBottom="16dp" />
 
 </LinearLayout>

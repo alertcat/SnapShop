@@ -65,6 +65,12 @@ lint/generated/
 lint/outputs/
 lint/tmp/
 
+# Claude Code local settings
+.claude/
+
+# Windows artifacts
+nul
+
 # OS generated files
 .DS_Store
 .DS_Store?

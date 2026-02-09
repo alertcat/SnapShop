@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ncnn-android-yolo26"
+rootProject.name = "ncnn-android-snapshop"
 include ':app'

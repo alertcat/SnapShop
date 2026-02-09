@@ -1,4 +1,4 @@
-package com.example.yolo26ncnn;
+package com.example.snapshop;
 
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;

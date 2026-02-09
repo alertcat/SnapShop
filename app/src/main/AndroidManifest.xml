@@ -4,16 +4,20 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
     <application
         android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Yolo26Ncnn">
+        android:theme="@style/Theme.SnapShop">
 
+        <!-- Home Screen -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -23,6 +27,24 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Page 1: YOLO Detection + On-Chain Memo -->
+        <activity
+            android:name=".DetectActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <!-- Page 2: Shopping Camera -->
+        <activity
+            android:name=".ShopCameraActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <!-- Page 3: Product Results -->
+        <activity
+            android:name=".ProductResultsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
 
     </application>
 
