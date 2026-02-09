@@ -36,7 +36,7 @@
 
     </LinearLayout>
 
-    <!-- Camera Preview -->
+    <!-- Camera Preview + Frozen Frame Overlay -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -48,11 +48,54 @@
             android:layout_height="match_parent"
             android:layout_gravity="center" />
 
-        <!-- Detection overlay -->
+        <!-- Detection overlay (YOLO bounding boxes) -->
         <com.example.snapshop.OverlayView
             android:id="@+id/overlayView"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
+
+        <!-- Frozen frame: shown when user captures a photo -->
+        <ImageView
+            android:id="@+id/ivFrozenFrame"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:visibility="gone" />
+
+        <!-- Loading overlay: shown during Vision API call -->
+        <LinearLayout
+            android:id="@+id/loadingOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="#80000000"
+            android:visibility="gone">
+
+            <ProgressBar
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:indeterminateTint="#4CAF50" />
+
+            <TextView
+                android:id="@+id/tvLoadingStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Analyzing product..."
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_marginTop="16dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Google Vision AI identifying brand &amp; model"
+                android:textColor="#AAAAAA"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp" />
+
+        </LinearLayout>
 
     </FrameLayout>
 
@@ -69,25 +112,25 @@
             android:id="@+id/tvStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Point camera at an object to detect"
+            android:text="Point camera at any product, then tap capture"
             android:textColor="#AAAAAA"
             android:textSize="13sp"
             android:gravity="center"
             android:layout_marginBottom="8dp" />
 
-        <!-- Detected object chips (tappable) -->
+        <!-- Detected object chips (tappable, quick YOLO search) -->
         <com.google.android.material.chip.ChipGroup
             android:id="@+id/chipGroup"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp" />
 
-        <!-- Capture & Search button -->
+        <!-- Capture & Search button — always enabled -->
         <Button
             android:id="@+id/btnCaptureSearch"
             android:layout_width="match_parent"
             android:layout_height="52dp"
-            android:text="Capture &amp; Search Products"
+            android:text="📸  Capture &amp; Identify Product"
             android:textAllCaps="false"
             android:textSize="16sp"
             android:backgroundTint="#4CAF50"

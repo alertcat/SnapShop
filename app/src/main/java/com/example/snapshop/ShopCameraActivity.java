@@ -9,13 +9,12 @@ import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
-import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.Size;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -30,7 +29,6 @@ import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.lifecycle.LifecycleOwner;
 
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
@@ -43,14 +41,22 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+// Vision API called via VisionApiHelper.analyzeImageBlocking() on background thread
+
 /**
- * ShopCameraActivity - Shopping camera page
+ * ShopCameraActivity - Shopping camera with two-layer AI
  *
- * Uses YOLO26 for real-time detection, displays detected object labels as
- * tappable chips. User can tap a chip to search for that object on Amazon/eBay.
+ * Layer 1 (Real-time, FREE): YOLO26 runs locally for bounding boxes and
+ *     rough category labels. Helps user aim at objects. Tappable chips
+ *     provide a quick-search shortcut via YOLO class name mapping.
  *
- * Also provides a "Capture & Search" button that uses Google Vision API
- * for more accurate product identification.
+ * Layer 2 (On-demand, 1 API call): When user taps "Capture & Identify",
+ *     the current frame is frozen and sent to Google Vision API for
+ *     precise brand/model/product identification. Works even when YOLO
+ *     detects nothing (e.g. a bag of dried blueberries).
+ *
+ * This design keeps Vision API usage to ~1 call per user action,
+ * staying well within the 1000 free calls/month quota.
  */
 public class ShopCameraActivity extends AppCompatActivity {
 
@@ -65,12 +71,18 @@ public class ShopCameraActivity extends AppCompatActivity {
     private Button btnBack;
     private TextView tvStatus;
 
+    // Freeze frame UI
+    private ImageView ivFrozenFrame;
+    private LinearLayout loadingOverlay;
+    private TextView tvLoadingStatus;
+
     private boolean isDetecting = true;
+    private boolean isCapturing = false; // Lock to prevent double-tap
     private ExecutorService cameraExecutor;
     private ProcessCameraProvider cameraProvider;
 
     private long lastDetectTime = 0;
-    private static final long DETECT_INTERVAL = 150; // Slightly slower for shopping mode
+    private static final long DETECT_INTERVAL = 150; // ms between YOLO frames
 
     // Track currently detected labels to avoid chip flickering
     private final Set<String> currentLabels = new HashSet<>();
@@ -88,13 +100,25 @@ public class ShopCameraActivity extends AppCompatActivity {
         btnBack = findViewById(R.id.btnBack);
         tvStatus = findViewById(R.id.tvStatus);
 
+        // Freeze frame views
+        ivFrozenFrame = findViewById(R.id.ivFrozenFrame);
+        loadingOverlay = findViewById(R.id.loadingOverlay);
+        tvLoadingStatus = findViewById(R.id.tvLoadingStatus);
+
         previewView.setScaleType(PreviewView.ScaleType.FILL_CENTER);
         cameraExecutor = Executors.newSingleThreadExecutor();
 
         // Back button
-        btnBack.setOnClickListener(v -> finish());
+        btnBack.setOnClickListener(v -> {
+            if (ivFrozenFrame.getVisibility() == View.VISIBLE) {
+                // If frozen, unfreeze and resume camera
+                unfreezeCamera();
+            } else {
+                finish();
+            }
+        });
 
-        // Capture & Search button - uses Vision API for deeper analysis
+        // Capture & Search — always enabled, no YOLO requirement
         btnCaptureSearch.setOnClickListener(v -> handleCaptureSearch());
 
         // Check permissions and start
@@ -162,11 +186,13 @@ public class ShopCameraActivity extends AppCompatActivity {
 
         try {
             cameraProvider.bindToLifecycle(this, selector, preview, analysis);
-            tvStatus.setText("Point camera at an object to detect");
+            tvStatus.setText("Point camera at any product, then tap capture");
         } catch (Exception e) {
             Log.e(TAG, "Use case binding failed", e);
         }
     }
+
+    // ==================== Layer 1: YOLO Real-time Detection ====================
 
     private void analyzeImage(ImageProxy image) {
         if (!isDetecting) {
@@ -188,7 +214,7 @@ public class ShopCameraActivity extends AppCompatActivity {
                 return;
             }
 
-            // Store last bitmap for Vision API capture
+            // Store last bitmap for capture (thread-safe)
             synchronized (this) {
                 if (lastCaptureBitmap != null) {
                     lastCaptureBitmap.recycle();
@@ -199,7 +225,7 @@ public class ShopCameraActivity extends AppCompatActivity {
             // Run YOLO detection
             Yolo26Ncnn.Obj[] objects = yolo26Ncnn.detect(bitmap);
 
-            // Update UI
+            // Update UI on main thread
             runOnUiThread(() -> {
                 int previewWidth = bitmap.getWidth();
                 int previewHeight = bitmap.getHeight();
@@ -217,7 +243,7 @@ public class ShopCameraActivity extends AppCompatActivity {
     }
 
     /**
-     * Update detection label chips
+     * Update detection label chips (YOLO quick-search shortcuts)
      */
     private void updateChips(Yolo26Ncnn.Obj[] objects) {
         Set<String> newLabels = new HashSet<>();
@@ -243,44 +269,188 @@ public class ShopCameraActivity extends AppCompatActivity {
                 chip.setChipBackgroundColorResource(android.R.color.holo_green_dark);
                 chip.setTextColor(getResources().getColor(android.R.color.white));
 
-                // Tap chip → search on Amazon
+                // Tap chip → quick search using YOLO label (no Vision API cost)
                 chip.setOnClickListener(v -> {
                     String searchQuery = ShopHelper.INSTANCE.mapDetectionToSearchQuery(label);
-                    openProductSearch(searchQuery, "chip");
+                    openProductSearch(searchQuery, "yolo_chip");
                 });
 
                 chipGroup.addView(chip);
             }
 
             if (newLabels.isEmpty()) {
-                tvStatus.setText("No objects detected. Move camera closer.");
+                tvStatus.setText("Point camera at any product, then tap capture");
             } else {
-                tvStatus.setText("Tap a label to search, or capture for deeper analysis");
+                tvStatus.setText("Tap a label for quick search, or capture for precise AI identification");
             }
         }
     }
 
+    // ==================== Layer 2: Capture & Vision API ====================
+
     /**
-     * Handle capture & search button
-     * Takes current frame and opens product search
+     * Handle "Capture & Identify Product" button.
+     *
+     * Works regardless of whether YOLO detected anything:
+     * 1. Freeze the camera frame
+     * 2. Show loading overlay
+     * 3. Send image to Google Vision API
+     * 4. Build search query from Vision result (+ YOLO hint if available)
+     * 5. Navigate to ProductResultsActivity
      */
     private void handleCaptureSearch() {
-        if (currentLabels.isEmpty()) {
-            Toast.makeText(this, "No objects detected yet", Toast.LENGTH_SHORT).show();
-            return;
+        if (isCapturing) return; // Prevent double-tap
+
+        // Grab the latest frame
+        Bitmap capturedBitmap;
+        synchronized (this) {
+            if (lastCaptureBitmap == null) {
+                Toast.makeText(this, "Camera is starting, please wait...", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            capturedBitmap = lastCaptureBitmap.copy(lastCaptureBitmap.getConfig(), false);
         }
 
-        // Use the first detected label for search
-        String topLabel = currentLabels.iterator().next();
-        String searchQuery = ShopHelper.INSTANCE.mapDetectionToSearchQuery(topLabel);
+        isCapturing = true;
+        isDetecting = false; // Pause YOLO detection
 
-        // TODO: In future, send captured image to Google Vision API for deeper analysis
-        // For now, use YOLO label directly
-        openProductSearch(searchQuery, "capture");
+        // Step 1: Freeze camera — show captured frame
+        ivFrozenFrame.setImageBitmap(capturedBitmap);
+        ivFrozenFrame.setVisibility(View.VISIBLE);
+        overlayView.clearResults();
+        overlayView.setVisibility(View.GONE);
+
+        // Step 2: Show loading overlay
+        loadingOverlay.setVisibility(View.VISIBLE);
+        tvLoadingStatus.setText("Analyzing product...");
+        btnCaptureSearch.setEnabled(false);
+        btnCaptureSearch.setText("Analyzing...");
+
+        // Grab YOLO hint (might be empty — that's fine)
+        String yoloHint = currentLabels.isEmpty() ? null : currentLabels.iterator().next();
+
+        // Step 3: Call Google Vision API in background
+        new Thread(() -> {
+            try {
+                // Check if API key is configured
+                String apiKey = BuildConfig.GOOGLE_VISION_API_KEY;
+                if (apiKey == null || apiKey.isEmpty()) {
+                    runOnUiThread(() -> {
+                        handleVisionFallback(yoloHint, "No Vision API key configured");
+                    });
+                    return;
+                }
+
+                runOnUiThread(() -> tvLoadingStatus.setText("Sending to Google Vision AI..."));
+
+                // Call Vision API (synchronous on this background thread)
+                VisionApiHelper.VisionResult visionResult = callVisionApiSync(capturedBitmap);
+
+                runOnUiThread(() -> {
+                    if (visionResult != null) {
+                        handleVisionSuccess(visionResult, yoloHint);
+                    } else {
+                        handleVisionFallback(yoloHint, "Vision API returned no results");
+                    }
+                });
+
+            } catch (Exception e) {
+                Log.e(TAG, "Vision API call failed", e);
+                runOnUiThread(() -> {
+                    handleVisionFallback(yoloHint, "Network error: " + e.getMessage());
+                });
+            } finally {
+                capturedBitmap.recycle();
+            }
+        }).start();
     }
 
     /**
-     * Open product results page
+     * Synchronously call Vision API (runs on background thread).
+     * Uses the @JvmStatic blocking method — no coroutines needed from Java.
+     */
+    private VisionApiHelper.VisionResult callVisionApiSync(Bitmap bitmap) {
+        try {
+            return VisionApiHelper.analyzeImageBlocking(bitmap);
+        } catch (Exception e) {
+            Log.e(TAG, "Vision API sync call failed", e);
+            return null;
+        }
+    }
+
+    /**
+     * Vision API returned a result — build precise search query and navigate.
+     */
+    private void handleVisionSuccess(VisionApiHelper.VisionResult result, String yoloHint) {
+        // Build multi-signal search query
+        String searchQuery = VisionApiHelper.INSTANCE.buildSearchQueryFromResult(result, yoloHint);
+
+        if (searchQuery.isEmpty()) {
+            // Vision API returned data but no useful labels
+            handleVisionFallback(yoloHint, "Could not identify the product");
+            return;
+        }
+
+        tvLoadingStatus.setText("Found: " + searchQuery);
+        Log.d(TAG, "Vision search query: " + searchQuery);
+
+        // Brief delay to show the result, then navigate
+        tvLoadingStatus.postDelayed(() -> {
+            resetCaptureUI();
+            openProductSearch(searchQuery, "vision_api");
+        }, 800);
+    }
+
+    /**
+     * Vision API failed or returned nothing — fall back gracefully.
+     * If YOLO had a detection, use that. Otherwise tell the user.
+     */
+    private void handleVisionFallback(String yoloHint, String reason) {
+        Log.w(TAG, "Vision fallback: " + reason);
+
+        if (yoloHint != null && !yoloHint.isEmpty()) {
+            // Use YOLO label as fallback
+            String searchQuery = ShopHelper.INSTANCE.mapDetectionToSearchQuery(yoloHint);
+            Toast.makeText(this, "Using AI detection: " + searchQuery, Toast.LENGTH_SHORT).show();
+            resetCaptureUI();
+            openProductSearch(searchQuery, "yolo_fallback");
+        } else {
+            // No YOLO, no Vision — ask user to try again
+            Toast.makeText(this,
+                    reason + "\nPlease try again with better lighting or angle.",
+                    Toast.LENGTH_LONG).show();
+            unfreezeCamera();
+        }
+    }
+
+    /**
+     * Unfreeze camera: hide frozen frame, resume YOLO detection.
+     */
+    private void unfreezeCamera() {
+        resetCaptureUI();
+        ivFrozenFrame.setVisibility(View.GONE);
+        overlayView.setVisibility(View.VISIBLE);
+        isDetecting = true;
+        isCapturing = false;
+    }
+
+    /**
+     * Reset button/overlay state after capture flow completes.
+     */
+    private void resetCaptureUI() {
+        loadingOverlay.setVisibility(View.GONE);
+        ivFrozenFrame.setVisibility(View.GONE);
+        overlayView.setVisibility(View.VISIBLE);
+        btnCaptureSearch.setEnabled(true);
+        btnCaptureSearch.setText("\uD83D\uDCF8  Capture & Identify Product");
+        isDetecting = true;
+        isCapturing = false;
+    }
+
+    // ==================== Navigation ====================
+
+    /**
+     * Open product results page with the search query.
      */
     private void openProductSearch(String query, String source) {
         Intent intent = new Intent(this, ProductResultsActivity.class);
@@ -289,9 +459,10 @@ public class ShopCameraActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
+    // ==================== Image Conversion ====================
+
     /**
      * Convert ImageProxy (YUV_420_888) to Bitmap
-     * Reused from DetectActivity with minor optimization
      */
     private Bitmap imageProxyToBitmap(ImageProxy image) {
         try {

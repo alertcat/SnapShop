@@ -121,6 +121,9 @@ dependencies {
     // Image loading (product images)
     implementation 'io.coil-kt:coil:2.5.0'
 
+    // Chrome Custom Tabs (in-app browser with shared cookies)
+    implementation 'androidx.browser:browser:1.7.0'
+
     // CardView (for home screen cards)
     implementation 'androidx.cardview:cardview:1.0.0'
 

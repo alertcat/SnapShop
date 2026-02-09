@@ -65,27 +65,32 @@ object VisionApiHelper {
      */
     suspend fun analyzeImage(bitmap: Bitmap): VisionResult? {
         return withContext(Dispatchers.IO) {
-            try {
-                // Compress and encode image as base64
-                val base64Image = bitmapToBase64(bitmap)
-                Log.d(TAG, "Image encoded: ${base64Image.length} chars")
+            analyzeImageBlocking(bitmap)
+        }
+    }
 
-                // Build API request body
-                val requestBody = buildRequestBody(base64Image)
+    /**
+     * Synchronous (blocking) version — safe to call from a background Thread in Java.
+     * Do NOT call on the main thread.
+     */
+    @JvmStatic
+    fun analyzeImageBlocking(bitmap: Bitmap): VisionResult? {
+        return try {
+            val base64Image = bitmapToBase64(bitmap)
+            Log.d(TAG, "Image encoded: ${base64Image.length} chars")
 
-                // Make API call
-                val response = callVisionApi(requestBody)
-                if (response == null) {
-                    Log.e(TAG, "Vision API returned null response")
-                    return@withContext null
-                }
+            val requestBody = buildRequestBody(base64Image)
 
-                // Parse response
-                parseResponse(response)
-            } catch (e: Exception) {
-                Log.e(TAG, "Vision API error", e)
-                null
+            val response = callVisionApi(requestBody)
+            if (response == null) {
+                Log.e(TAG, "Vision API returned null response")
+                return null
             }
+
+            parseResponse(response)
+        } catch (e: Exception) {
+            Log.e(TAG, "Vision API error", e)
+            null
         }
     }
 

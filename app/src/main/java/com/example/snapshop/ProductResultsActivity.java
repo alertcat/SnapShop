@@ -1,7 +1,5 @@
 package com.example.snapshop;
 
-import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.TextView;
@@ -9,8 +7,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-
-import com.google.android.material.tabs.TabLayout;
 
 /**
  * ProductResultsActivity - Display product search results
@@ -64,28 +60,19 @@ public class ProductResultsActivity extends AppCompatActivity {
         // Back button
         btnBack.setOnClickListener(v -> finish());
 
-        // Shopping platform buttons
-        btnAmazon.setOnClickListener(v -> openUrl(ShopHelper.INSTANCE.buildAmazonSearchUrl(searchQuery)));
-        btnEbay.setOnClickListener(v -> openUrl(ShopHelper.INSTANCE.buildEbaySearchUrl(searchQuery)));
-        btnAliExpress.setOnClickListener(v -> openUrl(ShopHelper.INSTANCE.buildAliExpressSearchUrl(searchQuery)));
+        // Shopping platform buttons — Chrome Custom Tabs (in-app browser, shared cookies)
+        btnAmazon.setOnClickListener(v ->
+                CustomTabHelper.INSTANCE.openAmazonUrl(this, ShopHelper.INSTANCE.buildAmazonSearchUrl(searchQuery)));
+        btnEbay.setOnClickListener(v ->
+                CustomTabHelper.INSTANCE.openUrl(this, ShopHelper.INSTANCE.buildEbaySearchUrl(searchQuery)));
+        btnAliExpress.setOnClickListener(v ->
+                CustomTabHelper.INSTANCE.openUrl(this, ShopHelper.INSTANCE.buildAliExpressSearchUrl(searchQuery)));
 
         // Buy with USDC button - opens Bitrefill for Amazon gift card
         btnBuyUsdc.setOnClickListener(v -> handleBuyWithUsdc());
 
         // Wallet connection
         btnConnectWallet.setOnClickListener(v -> handleWalletClick());
-    }
-
-    /**
-     * Open URL in external browser
-     */
-    private void openUrl(String url) {
-        try {
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            startActivity(intent);
-        } catch (Exception e) {
-            Toast.makeText(this, "Failed to open browser", Toast.LENGTH_SHORT).show();
-        }
     }
 
     /**
@@ -98,9 +85,9 @@ public class ProductResultsActivity extends AppCompatActivity {
             return;
         }
 
-        // Open Bitrefill for Amazon gift card purchase with USDC
+        // Open Bitrefill in Chrome Custom Tab
         String bitrefillUrl = ShopHelper.INSTANCE.buildBitrefillAmazonUrl();
-        openUrl(bitrefillUrl);
+        CustomTabHelper.INSTANCE.openUrl(this, bitrefillUrl);
 
         Toast.makeText(this,
                 "Buy an Amazon gift card with USDC on Bitrefill,\nthen use it to purchase your item!",
