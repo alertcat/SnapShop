@@ -45,6 +45,14 @@ object ShopHelper {
     }
 
     /**
+     * Build Bitrefill embed widget URL (for in-app WebView)
+     * Uses the embeddable widget with payment info display
+     */
+    fun buildBitrefillEmbedUrl(): String {
+        return "https://embed.bitrefill.com/?showPaymentInfo=true"
+    }
+
+    /**
      * Multi-signal query builder: combines YOLO class + Vision API labels + logo
      */
     fun buildSearchQuery(

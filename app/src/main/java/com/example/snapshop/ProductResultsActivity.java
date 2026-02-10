@@ -1,5 +1,8 @@
 package com.example.snapshop;
 
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.TextView;
@@ -60,13 +63,18 @@ public class ProductResultsActivity extends AppCompatActivity {
         // Back button
         btnBack.setOnClickListener(v -> finish());
 
-        // Shopping platform buttons — Chrome Custom Tabs (in-app browser, shared cookies)
-        btnAmazon.setOnClickListener(v ->
-                CustomTabHelper.INSTANCE.openAmazonUrl(this, ShopHelper.INSTANCE.buildAmazonSearchUrl(searchQuery)));
+        // Shopping platform buttons — in-app WebView (keeps user inside the app)
+        btnAmazon.setOnClickListener(v -> {
+            String amazonUrl = ShopHelper.INSTANCE.buildAmazonSearchUrl(searchQuery);
+            // Try Amazon app first (best UX), fallback to in-app WebView
+            if (!tryOpenAmazonApp(amazonUrl)) {
+                openInAppWebView(amazonUrl, "amazon");
+            }
+        });
         btnEbay.setOnClickListener(v ->
-                CustomTabHelper.INSTANCE.openUrl(this, ShopHelper.INSTANCE.buildEbaySearchUrl(searchQuery)));
+                openInAppWebView(ShopHelper.INSTANCE.buildEbaySearchUrl(searchQuery), "ebay"));
         btnAliExpress.setOnClickListener(v ->
-                CustomTabHelper.INSTANCE.openUrl(this, ShopHelper.INSTANCE.buildAliExpressSearchUrl(searchQuery)));
+                openInAppWebView(ShopHelper.INSTANCE.buildAliExpressSearchUrl(searchQuery), "aliexpress"));
 
         // Buy with USDC button - opens Bitrefill for Amazon gift card
         btnBuyUsdc.setOnClickListener(v -> handleBuyWithUsdc());
@@ -77,7 +85,7 @@ public class ProductResultsActivity extends AppCompatActivity {
 
     /**
      * Handle "Buy with USDC" button
-     * Opens Bitrefill to buy Amazon gift card with USDC
+     * Opens Bitrefill embed widget in in-app WebView
      */
     private void handleBuyWithUsdc() {
         if (!walletHelper.isConnected()) {
@@ -85,9 +93,9 @@ public class ProductResultsActivity extends AppCompatActivity {
             return;
         }
 
-        // Open Bitrefill in Chrome Custom Tab
-        String bitrefillUrl = ShopHelper.INSTANCE.buildBitrefillAmazonUrl();
-        CustomTabHelper.INSTANCE.openUrl(this, bitrefillUrl);
+        // Open Bitrefill embed widget in in-app WebView
+        String bitrefillUrl = ShopHelper.INSTANCE.buildBitrefillEmbedUrl();
+        openInAppWebView(bitrefillUrl, "bitrefill");
 
         Toast.makeText(this,
                 "Buy an Amazon gift card with USDC on Bitrefill,\nthen use it to purchase your item!",
@@ -105,6 +113,34 @@ public class ProductResultsActivity extends AppCompatActivity {
             btnConnectWallet.setText("Connecting...");
             walletHelper.connect(walletCallback);
         }
+    }
+
+    /**
+     * Open URL in the in-app ShopWebViewActivity.
+     */
+    private void openInAppWebView(String url, String platform) {
+        Intent intent = new Intent(this, ShopWebViewActivity.class);
+        intent.putExtra(ShopWebViewActivity.EXTRA_URL, url);
+        intent.putExtra(ShopWebViewActivity.EXTRA_PLATFORM, platform);
+        startActivity(intent);
+    }
+
+    /**
+     * Try to open URL in the Amazon Shopping app.
+     * Returns true if the app was found and opened.
+     */
+    private boolean tryOpenAmazonApp(String url) {
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            intent.setPackage("com.amazon.mShop.android.shopping");
+            if (intent.resolveActivity(getPackageManager()) != null) {
+                startActivity(intent);
+                return true;
+            }
+        } catch (ActivityNotFoundException e) {
+            // App not installed
+        }
+        return false;
     }
 
     private final WalletHelper.WalletCallback walletCallback = new WalletHelper.WalletCallback() {

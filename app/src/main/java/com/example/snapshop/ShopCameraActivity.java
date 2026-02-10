@@ -263,16 +263,24 @@ public class ShopCameraActivity extends AppCompatActivity {
 
             for (String label : newLabels) {
                 Chip chip = new Chip(this);
-                chip.setText(label);
+                chip.setText("\uD83D\uDD0D " + label);
                 chip.setClickable(true);
                 chip.setCheckable(false);
-                chip.setChipBackgroundColorResource(android.R.color.holo_green_dark);
+                chip.setChipBackgroundColor(
+                        android.content.res.ColorStateList.valueOf(0xFF555555));
                 chip.setTextColor(getResources().getColor(android.R.color.white));
 
-                // Tap chip → quick search using YOLO label (no Vision API cost)
+                // Tap chip → hint to use Capture for precise identification
                 chip.setOnClickListener(v -> {
-                    String searchQuery = ShopHelper.INSTANCE.mapDetectionToSearchQuery(label);
-                    openProductSearch(searchQuery, "yolo_chip");
+                    Toast.makeText(ShopCameraActivity.this,
+                            "Detected: " + label + "\nTap 'Capture & Identify' for precise product match",
+                            Toast.LENGTH_LONG).show();
+                    // Flash the capture button to draw attention
+                    btnCaptureSearch.setBackgroundTintList(
+                            android.content.res.ColorStateList.valueOf(0xFFFF9800));
+                    btnCaptureSearch.postDelayed(() ->
+                            btnCaptureSearch.setBackgroundTintList(
+                                    android.content.res.ColorStateList.valueOf(0xFF4CAF50)), 600);
                 });
 
                 chipGroup.addView(chip);
@@ -281,7 +289,8 @@ public class ShopCameraActivity extends AppCompatActivity {
             if (newLabels.isEmpty()) {
                 tvStatus.setText("Point camera at any product, then tap capture");
             } else {
-                tvStatus.setText("Tap a label for quick search, or capture for precise AI identification");
+                String firstLabel = newLabels.iterator().next();
+                tvStatus.setText("Detected: " + firstLabel + " \u2192 Tap 'Capture & Identify' for exact product");
             }
         }
     }
