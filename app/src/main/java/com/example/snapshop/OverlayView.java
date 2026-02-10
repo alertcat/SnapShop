@@ -142,27 +142,11 @@ public class OverlayView extends View {
             right = Math.max(0, Math.min(right, viewWidth));
             bottom = Math.max(0, Math.min(bottom, viewHeight));
 
-            // Draw detection box
+            // Draw detection box only — no label text
+            // YOLO COCO labels are too coarse and often wrong for shopping
+            // (e.g. phone → "remote"), so we only show the bounding box as
+            // a visual aid. Product identification is done by Vision API.
             canvas.drawRect(left, top, right, bottom, boxPaint);
-
-            // Draw label
-            String label = String.format("%s %.0f%%", result.label, result.prob * 100);
-            float textWidth = textPaint.measureText(label);
-            float textHeight = 40;
-            float padding = 8;
-
-            // Label background position (above box if possible)
-            float labelTop = top - textHeight - padding;
-            if (labelTop < 0) {
-                labelTop = top + padding;
-            }
-
-            // Draw label background
-            bgPaint.setAlpha(200);
-            canvas.drawRect(left, labelTop, left + textWidth + padding * 2, labelTop + textHeight + padding, bgPaint);
-
-            // Draw label text
-            canvas.drawText(label, left + padding, labelTop + textHeight, textPaint);
         }
     }
 
