@@ -26,6 +26,7 @@ android {
         buildConfigField "String", "GOOGLE_VISION_API_KEY", "\"${localProperties.getProperty('GOOGLE_VISION_API_KEY', '')}\""
         buildConfigField "String", "MERCHANT_WALLET_ADDRESS", "\"${localProperties.getProperty('MERCHANT_WALLET_ADDRESS', '')}\""
         buildConfigField "String", "AMAZON_AFFILIATE_TAG", "\"${localProperties.getProperty('AMAZON_AFFILIATE_TAG', 'snapshop0f5-20')}\""
+        buildConfigField "String", "EBAY_PARTNER_CAMPID", "\"${localProperties.getProperty('EBAY_PARTNER_CAMPID', '')}\""
 
         // OpenRouter LLM Vision (replaces Google Vision API for product identification)
         buildConfigField "String", "OPENROUTER_API_KEY", "\"${localProperties.getProperty('OPENROUTER_API_KEY', '')}\""

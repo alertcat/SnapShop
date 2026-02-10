@@ -10,11 +10,12 @@ import java.net.URLEncoder
  */
 object ShopHelper {
 
-    // Amazon Affiliate tag (loaded from BuildConfig, set in local.properties)
+    // Affiliate tags (loaded from BuildConfig, set in local.properties)
     private val AMAZON_TAG = BuildConfig.AMAZON_AFFILIATE_TAG
+    private val EBAY_CAMPID = BuildConfig.EBAY_PARTNER_CAMPID
 
     /**
-     * Build Amazon search URL with affiliate tag (completely free)
+     * Build Amazon search URL with affiliate tag
      */
     fun buildAmazonSearchUrl(keyword: String): String {
         val encoded = URLEncoder.encode(keyword, "UTF-8")
@@ -22,11 +23,22 @@ object ShopHelper {
     }
 
     /**
-     * Build eBay search URL (no API needed)
+     * Build eBay search URL with Partner Network affiliate tracking
+     *
+     * EPN parameters:
+     * - mkcid=1: affiliate channel
+     * - mkrid=711-53200-19255-0: eBay US marketplace rotation ID
+     * - campid: your EPN campaign ID
+     * - toolid=10001: standard tool ID
      */
     fun buildEbaySearchUrl(keyword: String): String {
         val encoded = URLEncoder.encode(keyword, "UTF-8")
-        return "https://www.ebay.com/sch/i.html?_nkw=$encoded"
+        val baseUrl = "https://www.ebay.com/sch/i.html?_nkw=$encoded"
+        return if (EBAY_CAMPID.isNotEmpty()) {
+            "$baseUrl&mkcid=1&mkrid=711-53200-19255-0&campid=$EBAY_CAMPID&toolid=10001"
+        } else {
+            baseUrl
+        }
     }
 
     /**
