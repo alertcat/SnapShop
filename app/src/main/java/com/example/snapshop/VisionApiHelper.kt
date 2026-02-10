@@ -20,8 +20,10 @@ import java.net.URL
  * Uses Web Detection + Label Detection + Logo Detection
  * to identify objects and find similar products.
  *
- * Free tier: 1000 requests/month
- * Cost after: $1.50 per 1000 requests
+ * Free tier: 1000 units/month per feature
+ * Cost after free tier (per 1000 images):
+ *   WEB_DETECTION: $3.50, LABEL_DETECTION: $1.50, LOGO_DETECTION: $1.50
+ *   Total: $6.50 per 1000 images (each feature billed separately)
  *
  * Setup: Create GCP project -> Enable Vision API -> Get API key
  */
@@ -97,37 +99,73 @@ object VisionApiHelper {
     /**
      * Build optimized search query from Vision API results
      *
-     * Multi-signal fusion strategy:
-     * 1. Detected logo (brand) takes highest priority
-     * 2. Best guess label provides context
-     * 3. Web entities add specificity
+     * Multi-signal fusion strategy (all 3 detection sources combined):
+     * 1. Detected logo (brand) → highest priority, provides brand name
+     * 2. Best guess label → often the most specific (e.g. "iPhone 16 Pro Max")
+     * 3. Top web entities → add model/variant specificity
+     * 4. Labels from LABEL_DETECTION → add product category context
+     * 5. YOLO class → last resort fallback
+     *
+     * Example output: "Apple iPhone 16 Pro Max Smartphone Mobile Phone"
+     * → Shopping platforms will match on the most specific terms first
      */
     fun buildSearchQueryFromResult(
         visionResult: VisionResult,
         yoloClass: String? = null
     ): String {
         val parts = mutableListOf<String>()
+        // Track what we've already added (case-insensitive) to avoid duplication
+        val seen = mutableSetOf<String>()
 
-        // Brand from logo detection
+        fun addUnique(text: String) {
+            val lower = text.lowercase().trim()
+            if (lower.isNotEmpty() && seen.none { lower.contains(it) || it.contains(lower) }) {
+                parts.add(text.trim())
+                seen.add(lower)
+            }
+        }
+
+        // 1. Brand from logo detection (highest priority — "Apple", "Samsung", etc.)
         if (visionResult.detectedLogos.isNotEmpty()) {
-            parts.add(visionResult.detectedLogos.first())
+            addUnique(visionResult.detectedLogos.first())
         }
 
-        // Best guess label
+        // 2. Best guess label — often the most useful single signal
+        //    e.g. "iPhone 16 Pro Max", "Samsung Galaxy S24 Ultra"
         if (!visionResult.bestGuessLabel.isNullOrEmpty()) {
-            parts.add(visionResult.bestGuessLabel)
-        } else if (yoloClass != null) {
-            // Fallback to YOLO class
-            parts.add(ShopHelper.mapDetectionToSearchQuery(yoloClass))
+            addUnique(visionResult.bestGuessLabel)
         }
 
-        // Add top web entity if different from above
-        val topEntity = visionResult.webEntities.firstOrNull()?.description
-        if (topEntity != null && !parts.any { it.equals(topEntity, ignoreCase = true) }) {
-            parts.add(topEntity)
+        // 3. Top 2 web entities — add model/variant specificity
+        //    e.g. "iPhone", "Apple iPhone 16 Pro", "Smartphone"
+        for (entity in visionResult.webEntities.take(2)) {
+            if (entity.description.isNotEmpty() && entity.score > 0.5f) {
+                addUnique(entity.description)
+            }
         }
 
-        return parts.joinToString(" ").trim()
+        // 4. Top 2 labels from LABEL_DETECTION — add product category context
+        //    e.g. "Mobile phone", "Gadget", "Communication Device"
+        //    These help shopping platforms match the right category
+        for (label in visionResult.labels.take(2)) {
+            addUnique(label)
+        }
+
+        // 5. Fallback to YOLO class if nothing useful from Vision API
+        if (parts.isEmpty() && yoloClass != null) {
+            addUnique(ShopHelper.mapDetectionToSearchQuery(yoloClass))
+        }
+
+        val query = parts.joinToString(" ").trim()
+        Log.d(TAG, "Search query built: '$query' (from ${parts.size} signals)")
+
+        // Cap query length to avoid overly long search strings
+        // Shopping platforms work best with ~60-80 char queries
+        return if (query.length > 100) {
+            query.substring(0, query.lastIndexOf(' ', 100).coerceAtLeast(60))
+        } else {
+            query
+        }
     }
 
     /**

@@ -27,6 +27,10 @@ android {
         buildConfigField "String", "MERCHANT_WALLET_ADDRESS", "\"${localProperties.getProperty('MERCHANT_WALLET_ADDRESS', '')}\""
         buildConfigField "String", "AMAZON_AFFILIATE_TAG", "\"${localProperties.getProperty('AMAZON_AFFILIATE_TAG', 'snapshop0f5-20')}\""
 
+        // OpenRouter LLM Vision (replaces Google Vision API for product identification)
+        buildConfigField "String", "OPENROUTER_API_KEY", "\"${localProperties.getProperty('OPENROUTER_API_KEY', '')}\""
+        buildConfigField "String", "OPENROUTER_MODEL", "\"${localProperties.getProperty('OPENROUTER_MODEL', 'google/gemini-3-flash-preview')}\""
+
         externalNativeBuild {
             cmake {
                 arguments "-DANDROID_STL=c++_shared"

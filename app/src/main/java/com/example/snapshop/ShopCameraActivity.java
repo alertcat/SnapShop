@@ -39,7 +39,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-// Vision API called via VisionApiHelper.analyzeImageBlocking() on background thread
+// LLM Vision called via LlmVisionHelper.identifyProductBlocking() on background thread
 
 /**
  * ShopCameraActivity - Shopping camera with AI product identification
@@ -49,12 +49,14 @@ import java.util.concurrent.Executors;
  * too coarse for shopping (e.g. "cell phone" instead of "iPhone 16 Pro Max",
  * or misidentifying a phone as "remote").
  *
- * When user taps "Capture & Identify", the frame is sent to Google Vision API
- * for precise brand/model/product identification via Web Detection + Logo
- * Detection + Label Detection.
+ * When user taps "Capture & Identify", the frame is sent to a multimodal LLM
+ * (via OpenRouter) for precise brand/model/product identification.
  *
- * This design keeps Vision API usage to ~1 call per user action,
- * staying well within the 1000 free calls/month quota.
+ * Uses tiered cascade strategy:
+ *   Tier 1: gemini-2.5-flash-lite (cheap, fast, ~$0.10/1000 images)
+ *   Tier 2: gemini-3-flash-preview (stronger, auto-upgrade if Tier 1 uncertain)
+ *
+ * Image is resized to ≤384px before sending → 258 tokens → minimal cost.
  */
 public class ShopCameraActivity extends AppCompatActivity {
 
@@ -255,7 +257,7 @@ public class ShopCameraActivity extends AppCompatActivity {
         }
     }
 
-    // ==================== Layer 2: Capture & Vision API ====================
+    // ==================== Layer 2: Capture & LLM Vision ====================
 
     /**
      * Handle "Capture & Identify Product" button.
@@ -263,8 +265,8 @@ public class ShopCameraActivity extends AppCompatActivity {
      * Works regardless of whether YOLO detected anything:
      * 1. Freeze the camera frame
      * 2. Show loading overlay
-     * 3. Send image to Google Vision API
-     * 4. Build search query from Vision result (+ YOLO hint if available)
+     * 3. Send image to LLM via OpenRouter (tiered cascade)
+     * 4. Use LLM-generated searchQuery (+ YOLO hint as fallback)
      * 5. Navigate to ProductResultsActivity
      */
     private void handleCaptureSearch() {
@@ -298,35 +300,39 @@ public class ShopCameraActivity extends AppCompatActivity {
         // Grab YOLO hint (might be empty — that's fine)
         String yoloHint = currentLabels.isEmpty() ? null : currentLabels.iterator().next();
 
-        // Step 3: Call Google Vision API in background
+        // Step 3: Call LLM Vision via OpenRouter in background
         new Thread(() -> {
             try {
                 // Check if API key is configured
-                String apiKey = BuildConfig.GOOGLE_VISION_API_KEY;
+                String apiKey = BuildConfig.OPENROUTER_API_KEY;
                 if (apiKey == null || apiKey.isEmpty()) {
                     runOnUiThread(() -> {
-                        handleVisionFallback(yoloHint, "No Vision API key configured");
+                        handleLlmFallback(yoloHint, "No OpenRouter API key configured");
                     });
                     return;
                 }
 
-                runOnUiThread(() -> tvLoadingStatus.setText("Sending to Google Vision AI..."));
+                // LLM progress callback → update UI status text
+                LlmVisionHelper.ProgressCallback progressCallback = message ->
+                        runOnUiThread(() -> tvLoadingStatus.setText(message));
 
-                // Call Vision API (synchronous on this background thread)
-                VisionApiHelper.VisionResult visionResult = callVisionApiSync(capturedBitmap);
+                // Call LLM (synchronous on this background thread)
+                // Tiered cascade: tries cheap model first, upgrades if uncertain
+                LlmVisionHelper.ProductInfo productInfo =
+                        LlmVisionHelper.identifyProductBlocking(capturedBitmap, progressCallback);
 
                 runOnUiThread(() -> {
-                    if (visionResult != null) {
-                        handleVisionSuccess(visionResult, yoloHint);
+                    if (productInfo != null) {
+                        handleLlmSuccess(productInfo, yoloHint);
                     } else {
-                        handleVisionFallback(yoloHint, "Vision API returned no results");
+                        handleLlmFallback(yoloHint, "AI could not identify the product");
                     }
                 });
 
             } catch (Exception e) {
-                Log.e(TAG, "Vision API call failed", e);
+                Log.e(TAG, "LLM Vision call failed", e);
                 runOnUiThread(() -> {
-                    handleVisionFallback(yoloHint, "Network error: " + e.getMessage());
+                    handleLlmFallback(yoloHint, "Network error: " + e.getMessage());
                 });
             } finally {
                 capturedBitmap.recycle();
@@ -335,47 +341,43 @@ public class ShopCameraActivity extends AppCompatActivity {
     }
 
     /**
-     * Synchronously call Vision API (runs on background thread).
-     * Uses the @JvmStatic blocking method — no coroutines needed from Java.
+     * LLM returned a product identification — build search query and navigate.
      */
-    private VisionApiHelper.VisionResult callVisionApiSync(Bitmap bitmap) {
-        try {
-            return VisionApiHelper.analyzeImageBlocking(bitmap);
-        } catch (Exception e) {
-            Log.e(TAG, "Vision API sync call failed", e);
-            return null;
-        }
-    }
-
-    /**
-     * Vision API returned a result — build precise search query and navigate.
-     */
-    private void handleVisionSuccess(VisionApiHelper.VisionResult result, String yoloHint) {
-        // Build multi-signal search query
-        String searchQuery = VisionApiHelper.INSTANCE.buildSearchQueryFromResult(result, yoloHint);
+    private void handleLlmSuccess(LlmVisionHelper.ProductInfo productInfo, String yoloHint) {
+        String searchQuery = LlmVisionHelper.buildSearchQuery(productInfo, yoloHint);
 
         if (searchQuery.isEmpty()) {
-            // Vision API returned data but no useful labels
-            handleVisionFallback(yoloHint, "Could not identify the product");
+            handleLlmFallback(yoloHint, "Could not identify the product");
             return;
         }
 
-        tvLoadingStatus.setText("Found: " + searchQuery);
-        Log.d(TAG, "Vision search query: " + searchQuery);
+        // Show identification details
+        String displayText = "Found: " + searchQuery;
+        if (!productInfo.getBrand().isEmpty() && !productInfo.getModel().isEmpty()) {
+            displayText = "Found: " + productInfo.getBrand() + " " + productInfo.getModel();
+        }
+        String tierLabel = productInfo.getTier() == 1 ? "fast" : "deep";
+        displayText += " (" + tierLabel + " scan, " +
+                String.format("%.0f%%", productInfo.getConfidence() * 100) + " confident)";
+
+        tvLoadingStatus.setText(displayText);
+        Log.d(TAG, "LLM search query: " + searchQuery +
+                " (tier=" + productInfo.getTier() + ", confidence=" + productInfo.getConfidence() + ")");
 
         // Brief delay to show the result, then navigate
+        String finalQuery = searchQuery;
         tvLoadingStatus.postDelayed(() -> {
             resetCaptureUI();
-            openProductSearch(searchQuery, "vision_api");
-        }, 800);
+            openProductSearch(finalQuery, "llm_tier" + productInfo.getTier());
+        }, 1000);
     }
 
     /**
-     * Vision API failed or returned nothing — fall back gracefully.
+     * LLM failed or returned nothing — fall back gracefully.
      * If YOLO had a detection, use that. Otherwise tell the user.
      */
-    private void handleVisionFallback(String yoloHint, String reason) {
-        Log.w(TAG, "Vision fallback: " + reason);
+    private void handleLlmFallback(String yoloHint, String reason) {
+        Log.w(TAG, "LLM fallback: " + reason);
 
         if (yoloHint != null && !yoloHint.isEmpty()) {
             // Use YOLO label as fallback
@@ -384,7 +386,7 @@ public class ShopCameraActivity extends AppCompatActivity {
             resetCaptureUI();
             openProductSearch(searchQuery, "yolo_fallback");
         } else {
-            // No YOLO, no Vision — ask user to try again
+            // No YOLO, no LLM — ask user to try again
             Toast.makeText(this,
                     reason + "\nPlease try again with better lighting or angle.",
                     Toast.LENGTH_LONG).show();

@@ -5,7 +5,25 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:github.com)",
       "Bash(copy:*)",
-      "Bash(cmd /c:*)"
+      "Bash(cmd /c:*)",
+      "WebFetch(domain:app.nft.storage)",
+      "WebFetch(domain:classic.nft.storage)",
+      "WebFetch(domain:classic-app.nft.storage)",
+      "WebFetch(domain:api.nft.storage)",
+      "WebFetch(domain:nft.storage)",
+      "WebFetch(domain:docs.storacha.network)",
+      "WebFetch(domain:docs.solanamobile.com)",
+      "WebFetch(domain:www.helius.dev)",
+      "Bash(dir:*)",
+      "Bash(where:*)",
+      "Bash(python:*)",
+      "Bash(magick:*)",
+      "Bash(pip show:*)",
+      "Bash(test:*)",
+      "Bash(ls:*)",
+      "WebFetch(domain:www.bitrefill.com)",
+      "Bash(.\\\\gradlew.bat:*)",
+      "Bash(powershell:*)"
     ]
   }
 }
