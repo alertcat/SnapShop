@@ -1,7 +1,10 @@
 package com.example.snapshop;
 
 import android.annotation.SuppressLint;
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
 import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -38,6 +41,12 @@ public class ShopWebViewActivity extends AppCompatActivity {
     private static final String CHROME_MOBILE_UA =
             "Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 " +
             "(KHTML, like Gecko) Chrome/120.0.6099.230 Mobile Safari/537.36";
+
+    // Desktop User-Agent for sites that force app deep links on mobile
+    // (e.g. AliExpress redirects mobile to aliexpress:// scheme)
+    private static final String DESKTOP_UA =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+            "(KHTML, like Gecko) Chrome/120.0.6099.230 Safari/537.36";
 
     private WebView webView;
     private ProgressBar progressBar;
@@ -78,6 +87,11 @@ public class ShopWebViewActivity extends AppCompatActivity {
         if ("amazon".equals(platform)) {
             // Amazon requires a real Chrome UA to avoid 503 bot detection
             settings.setUserAgentString(CHROME_MOBILE_UA);
+        } else if ("aliexpress".equals(platform)) {
+            // AliExpress mobile site redirects to aliexpress:// deep link scheme
+            // which WebView cannot handle (ERR_UNKNOWN_URL_SCHEME).
+            // Using desktop UA prevents this redirect and loads the full web version.
+            settings.setUserAgentString(DESKTOP_UA);
         }
 
         // Enable cookies (important for shopping sites)
@@ -89,8 +103,27 @@ public class ShopWebViewActivity extends AppCompatActivity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                // Keep all navigation inside the WebView
-                return false;
+                Uri uri = request.getUrl();
+                String scheme = uri.getScheme();
+
+                // Allow normal HTTP/HTTPS navigation inside the WebView
+                if ("http".equals(scheme) || "https".equals(scheme)) {
+                    return false;
+                }
+
+                // Handle custom URL schemes (aliexpress://, intent://, market://, etc.)
+                // These are app deep links that WebView cannot load directly.
+                // Try to open them in the corresponding native app.
+                Log.d(TAG, "Intercepted non-HTTP scheme: " + uri.toString());
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                } catch (ActivityNotFoundException e) {
+                    Log.w(TAG, "No app found for scheme: " + scheme);
+                    // App not installed — ignore the redirect, stay on current page
+                }
+                return true; // Block WebView from trying to load the custom scheme
             }
 
             @Override
