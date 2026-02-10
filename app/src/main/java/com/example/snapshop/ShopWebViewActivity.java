@@ -38,15 +38,10 @@ public class ShopWebViewActivity extends AppCompatActivity {
     public static final String EXTRA_PLATFORM = "platform"; // "amazon", "ebay", "aliexpress", "bitrefill"
 
     // Real Chrome Mobile User-Agent to avoid Amazon 503 bot detection
+    // Also used for AliExpress (mobile layout is better for phone screens)
     private static final String CHROME_MOBILE_UA =
             "Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 " +
             "(KHTML, like Gecko) Chrome/120.0.6099.230 Mobile Safari/537.36";
-
-    // Desktop User-Agent for sites that force app deep links on mobile
-    // (e.g. AliExpress redirects mobile to aliexpress:// scheme)
-    private static final String DESKTOP_UA =
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-            "(KHTML, like Gecko) Chrome/120.0.6099.230 Safari/537.36";
 
     private WebView webView;
     private ProgressBar progressBar;
@@ -84,14 +79,9 @@ public class ShopWebViewActivity extends AppCompatActivity {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
 
         // Platform-specific User-Agent
-        if ("amazon".equals(platform)) {
-            // Amazon requires a real Chrome UA to avoid 503 bot detection
+        // Amazon & AliExpress both need Chrome Mobile UA for proper mobile layout
+        if ("amazon".equals(platform) || "aliexpress".equals(platform)) {
             settings.setUserAgentString(CHROME_MOBILE_UA);
-        } else if ("aliexpress".equals(platform)) {
-            // AliExpress mobile site redirects to aliexpress:// deep link scheme
-            // which WebView cannot handle (ERR_UNKNOWN_URL_SCHEME).
-            // Using desktop UA prevents this redirect and loads the full web version.
-            settings.setUserAgentString(DESKTOP_UA);
         }
 
         // Enable cookies (important for shopping sites)
@@ -99,7 +89,8 @@ public class ShopWebViewActivity extends AppCompatActivity {
         cookieManager.setAcceptCookie(true);
         cookieManager.setAcceptThirdPartyCookies(webView, true);
 
-        // WebViewClient - handles page navigation
+        // WebViewClient - handles page navigation and deep link interception
+        final String currentPlatform = platform;
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -111,19 +102,23 @@ public class ShopWebViewActivity extends AppCompatActivity {
                     return false;
                 }
 
-                // Handle custom URL schemes (aliexpress://, intent://, market://, etc.)
+                // Block custom URL schemes (aliexpress://, intent://, market://, etc.)
                 // These are app deep links that WebView cannot load directly.
-                // Try to open them in the corresponding native app.
-                Log.d(TAG, "Intercepted non-HTTP scheme: " + uri.toString());
-                try {
-                    Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    startActivity(intent);
-                } catch (ActivityNotFoundException e) {
-                    Log.w(TAG, "No app found for scheme: " + scheme);
-                    // App not installed — ignore the redirect, stay on current page
+                // For shopping platforms, we stay in the WebView instead of launching external apps.
+                Log.d(TAG, "Blocked non-HTTP scheme: " + uri.toString());
+
+                // For intent:// schemes, try to extract the fallback HTTPS URL
+                if ("intent".equals(scheme)) {
+                    String fallbackUrl = extractIntentFallbackUrl(uri.toString());
+                    if (fallbackUrl != null) {
+                        Log.d(TAG, "Using intent fallback URL: " + fallbackUrl);
+                        view.loadUrl(fallbackUrl);
+                        return true;
+                    }
                 }
-                return true; // Block WebView from trying to load the custom scheme
+
+                // Silently ignore all other custom schemes — stay on current page
+                return true;
             }
 
             @Override
@@ -131,12 +126,22 @@ public class ShopWebViewActivity extends AppCompatActivity {
                 super.onPageStarted(view, url, favicon);
                 tvUrl.setText(url);
                 updateNavigationButtons();
+
+                // Inject JS early to intercept deep link redirects before they execute
+                if ("aliexpress".equals(currentPlatform)) {
+                    injectDeepLinkBlocker(view);
+                }
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 updateNavigationButtons();
+
+                // Re-inject after page fully loads (some redirects are deferred)
+                if ("aliexpress".equals(currentPlatform)) {
+                    injectDeepLinkBlocker(view);
+                }
             }
         });
 
@@ -182,6 +187,82 @@ public class ShopWebViewActivity extends AppCompatActivity {
         } else {
             finish();
         }
+    }
+
+    /**
+     * Inject JavaScript to block deep link redirects (aliexpress://, etc.)
+     *
+     * AliExpress mobile site uses JS to redirect to their native app via
+     * window.location = "aliexpress://..." or by creating hidden <a> tags.
+     * This script overrides the location setter to block non-HTTP schemes,
+     * keeping the user inside the WebView with the mobile-optimized layout.
+     */
+    private void injectDeepLinkBlocker(WebView view) {
+        String js = "(function() {" +
+                "  if (window.__deepLinkBlocked) return;" +
+                "  window.__deepLinkBlocked = true;" +
+                // Override window.location assignment to block custom schemes
+                "  var origLocation = window.location;" +
+                "  Object.defineProperty(window, '__aliBlock', {value: true});" +
+                // Intercept dynamic <a> / <iframe> navigations
+                "  var origCreateElement = document.createElement;" +
+                "  document.createElement = function(tag) {" +
+                "    var el = origCreateElement.call(document, tag);" +
+                "    if (tag.toLowerCase() === 'a' || tag.toLowerCase() === 'iframe') {" +
+                "      var origSetAttr = el.setAttribute;" +
+                "      el.setAttribute = function(name, value) {" +
+                "        if ((name === 'href' || name === 'src') && " +
+                "            typeof value === 'string' && " +
+                "            !value.startsWith('http') && !value.startsWith('/') && !value.startsWith('#')) {" +
+                "          console.log('[SnapShop] Blocked deep link: ' + value);" +
+                "          return;" +
+                "        }" +
+                "        return origSetAttr.call(this, name, value);" +
+                "      };" +
+                "    }" +
+                "    return el;" +
+                "  };" +
+                // Block meta refresh redirects to custom schemes
+                "  var observer = new MutationObserver(function(mutations) {" +
+                "    mutations.forEach(function(m) {" +
+                "      m.addedNodes.forEach(function(node) {" +
+                "        if (node.tagName === 'META' && node.httpEquiv === 'refresh') {" +
+                "          var content = node.content || '';" +
+                "          if (content.indexOf('aliexpress://') !== -1 || " +
+                "              content.indexOf('intent://') !== -1) {" +
+                "            node.remove();" +
+                "            console.log('[SnapShop] Blocked meta refresh redirect');" +
+                "          }" +
+                "        }" +
+                "      });" +
+                "    });" +
+                "  });" +
+                "  observer.observe(document.documentElement, {childList: true, subtree: true});" +
+                "})();";
+        view.evaluateJavascript(js, null);
+    }
+
+    /**
+     * Extract fallback HTTPS URL from an intent:// URI.
+     * Format: intent://...#Intent;scheme=https;S.browser_fallback_url=https://...;end
+     */
+    private String extractIntentFallbackUrl(String intentUri) {
+        try {
+            // Look for S.browser_fallback_url=
+            String marker = "S.browser_fallback_url=";
+            int idx = intentUri.indexOf(marker);
+            if (idx != -1) {
+                String rest = intentUri.substring(idx + marker.length());
+                int endIdx = rest.indexOf(';');
+                if (endIdx != -1) {
+                    return Uri.decode(rest.substring(0, endIdx));
+                }
+                return Uri.decode(rest);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to extract fallback URL from intent", e);
+        }
+        return null;
     }
 
     private void updateNavigationButtons() {

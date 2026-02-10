@@ -69,49 +69,9 @@ One seamless flow. No typing. No searching. See it, snap it, buy it — all on-c
 
 ## 🏗️ Architecture
 
-```mermaid
-flowchart TB
-    subgraph CAM["📷 Camera Layer"]
-        A["CameraX\n(Real-time Feed)"] -->|"每帧 ~70ms"| B["YOLO26 NCNN\n(On-Device, 10-13 FPS)"]
-        B --> C["Bounding Boxes\n(OverlayView)"]
-    end
-
-    A -->|"📸 User Tap Capture"| D
-
-    subgraph LLM["🤖 LLM Vision Engine (OpenRouter)"]
-        D["Resize ≤384px\nJPEG 80% + Base64"] --> E["Tier 1: Gemini\nFlash-Lite\n~$0.10/1K images"]
-        E -->|"confidence < 60%\nor model empty"| F["Tier 2: Auto-Upgrade\n(Configurable Model)"]
-        E --> G["{ brand, model,\ncategory, searchQuery,\nconfidence }"]
-        F --> G
-    end
-
-    subgraph SHOP["🛒 Shopping Layer (In-App WebView)"]
-        H["Amazon\n(Chrome UA)"]
-        I["eBay"]
-        J["AliExpress"]
-    end
-
-    G --> H
-    G --> I
-    G --> J
-
-    subgraph SOL["⛓️ Solana Blockchain"]
-        K["MWA Wallet\n(Seeker/Seed Vault)"]
-        L["USDC Payments\n(SPL Token)"]
-        M["Memo On-Chain\n(Detection Receipts)"]
-    end
-
-    H -->|"Buy with USDC"| N["Bitrefill\n(Gift Cards)"]
-    N --> L
-    K --> L
-    K --> M
-    B -->|"Detection Data"| M
-
-    style CAM fill:#1a1a2e,stroke:#00d2ff,color:#fff
-    style LLM fill:#1a1a2e,stroke:#ff6b6b,color:#fff
-    style SHOP fill:#1a1a2e,stroke:#4ecdc4,color:#fff
-    style SOL fill:#1a1a2e,stroke:#9945ff,color:#fff
-```
+<div align="center">
+<img src="docs/pic.png" alt="SnapShop Architecture" width="800" />
+</div>
 
 ---
 
