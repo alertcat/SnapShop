@@ -13,6 +13,9 @@ import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * LLM-based Vision Helper using OpenRouter API
@@ -70,30 +73,73 @@ object LlmVisionHelper {
         fun onProgress(message: String)
     }
 
-    // System prompt for product identification
-    private val IDENTIFICATION_PROMPT = """
-You are a product identification expert. Analyze the image and identify the product(s) visible.
+    /**
+     * Build the identification prompt with current date injected.
+     *
+     * KEY DESIGN: The prompt focuses on OBSERVABLE PHYSICAL ATTRIBUTES rather than
+     * guessed model numbers, because LLM training data has a cutoff date and cannot
+     * know about products released after training. For example, without this design,
+     * an iPhone 16 Pro Max in Desert Titanium would be misidentified as iPhone 14 Pro Max Gold
+     * because the model doesn't know iPhone 16 exists.
+     *
+     * By focusing on what the model can SEE (color, camera layout, materials, form factor),
+     * the generated searchQuery will match the correct product on shopping platforms
+     * even if the LLM doesn't know the exact model name.
+     */
+    private fun buildIdentificationPrompt(): String {
+        val currentDate = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+        return """
+You are a product identification expert. Today's date is $currentDate.
+
+CRITICAL: Your training data has a knowledge cutoff date. Products released AFTER your training
+may exist but be unknown to you. DO NOT guess a model number you are unsure about.
+When uncertain about the exact model/generation, describe what you OBSERVE instead.
+
+Analyze the image and identify the product(s) visible.
 
 Return ONLY a valid JSON object (no markdown, no code fences, no extra text) with these fields:
 {
   "brand": "brand/manufacturer name, empty string if unknown",
-  "model": "specific model name/number, empty string if uncertain",
+  "model": "specific model name/number, empty string if uncertain — NEVER GUESS",
   "category": "product category (e.g. smartphone, laptop, shoes, headphones)",
-  "key_attributes": ["color", "material", "size", "notable features"],
-  "searchQuery": "the best search query to find this exact product for purchase on Amazon/eBay",
+  "key_attributes": ["observed color/finish", "material", "camera count & layout", "form factor", "any visible text/markings", "distinctive design features"],
+  "searchQuery": "the best search query to find this exact product for purchase on Amazon/eBay — MUST use observed physical attributes",
   "confidence": 0.0,
   "notes": "what made identification uncertain, if anything"
 }
 
-Rules:
-- If you cannot determine the exact model, leave "model" as empty string — DO NOT guess
-- "searchQuery" MUST always be useful for shopping, even when model is unknown
-- Include brand in searchQuery if identified
-- Be honest about confidence — 0.9+ means you are very sure about brand AND model
-- For electronics, try to identify the specific generation/variant if visible
-- confidence < 0.5 means you're mostly guessing
-- Return ONLY the JSON object, nothing else
-    """.trimIndent()
+RULES FOR ACCURATE IDENTIFICATION:
+
+1. DESCRIBE WHAT YOU SEE, not what you assume:
+   - Color: use the EXACT color you observe (e.g. "desert titanium", "natural titanium", NOT "gold" if it's not gold)
+   - Camera: count cameras and describe their arrangement (e.g. "triple camera diagonal layout")
+   - Material: note visible materials (e.g. "titanium frame", "glass back", "matte finish")
+   - Ports/buttons: note USB-C vs Lightning, action button vs mute switch, etc.
+   - Size: estimate relative size (e.g. "large/max size", "compact/mini")
+
+2. MODEL NUMBER RULES:
+   - Only provide "model" if you are CERTAIN (confidence > 0.85 for that specific generation)
+   - If unsure about the exact generation/year, leave "model" EMPTY
+   - NEVER hallucinate a model number — wrong model is worse than no model
+   - It's FINE to leave model empty; the searchQuery with physical attributes will work
+
+3. SEARCH QUERY STRATEGY (most important field):
+   - ALWAYS build searchQuery from OBSERVED attributes, not guessed model numbers
+   - Format: "[Brand] [Product Line] [Key Physical Attributes]"
+   - Good: "Apple iPhone Pro Max Desert Titanium triple camera" (matches any generation)
+   - Bad: "Apple iPhone 14 Pro Max Gold" (wrong generation = wrong product!)
+   - Include: brand, product line/series, observed color, notable features
+   - The searchQuery must work on Amazon/eBay to find the EXACT product in the image
+
+4. CONFIDENCE SCORING:
+   - 0.9+: Certain about brand AND exact model (e.g. visible model text, unique design you're sure about)
+   - 0.7-0.9: Sure about brand and product line, but not the exact generation
+   - 0.5-0.7: Reasonably sure about brand, general product type
+   - <0.5: Mostly guessing
+
+5. Return ONLY the JSON object, nothing else
+        """.trimIndent()
+    }
 
     /**
      * Identify product in image (coroutine version)
@@ -181,7 +227,16 @@ Rules:
 
     /**
      * Build search query from ProductInfo
-     * Uses the LLM-generated searchQuery directly, with YOLO fallback
+     *
+     * Strategy:
+     * 1. If LLM provided a searchQuery, use it (already attribute-based per prompt design)
+     * 2. If searchQuery is empty, construct from brand + attributes + category
+     * 3. Last resort: YOLO hint
+     *
+     * NOTE: The prompt instructs the LLM to build searchQuery from OBSERVED attributes
+     * (not guessed model numbers), so the searchQuery should already be safe from
+     * knowledge-cutoff issues. e.g. "Apple iPhone Pro Max Desert Titanium triple camera"
+     * instead of "Apple iPhone 14 Pro Max Gold".
      */
     @JvmStatic
     fun buildSearchQuery(productInfo: ProductInfo?, yoloHint: String? = null): String {
@@ -189,11 +244,20 @@ Rules:
             return productInfo.searchQuery.trim()
         }
 
-        // Fallback: construct from brand + model + category
+        // Fallback: construct from brand + attributes + category
         if (productInfo != null) {
             val parts = mutableListOf<String>()
             if (productInfo.brand.isNotBlank()) parts.add(productInfo.brand)
-            if (productInfo.model.isNotBlank()) parts.add(productInfo.model)
+            // Only include model if confidence is high enough (avoid wrong generation)
+            if (productInfo.model.isNotBlank() && productInfo.confidence >= 0.85) {
+                parts.add(productInfo.model)
+            }
+            // Add physical attributes for better matching
+            for (attr in productInfo.keyAttributes.take(3)) {
+                if (attr.isNotBlank() && parts.none { it.contains(attr, ignoreCase = true) }) {
+                    parts.add(attr)
+                }
+            }
             if (productInfo.category.isNotBlank()) parts.add(productInfo.category)
             if (parts.isNotEmpty()) return parts.joinToString(" ")
         }
@@ -272,6 +336,7 @@ Rules:
      * Uses OpenAI-compatible format with vision (image_url)
      */
     private fun buildRequestBody(base64Image: String, model: String): String {
+        val prompt = buildIdentificationPrompt()
         val request = JSONObject().apply {
             put("model", model)
             put("max_tokens", 500)
@@ -280,10 +345,10 @@ Rules:
                 put(JSONObject().apply {
                     put("role", "user")
                     put("content", JSONArray().apply {
-                        // Text instruction
+                        // Text instruction (with current date injected)
                         put(JSONObject().apply {
                             put("type", "text")
-                            put("text", IDENTIFICATION_PROMPT)
+                            put("text", prompt)
                         })
                         // Image
                         put(JSONObject().apply {
