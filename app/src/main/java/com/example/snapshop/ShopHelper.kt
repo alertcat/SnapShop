@@ -53,7 +53,7 @@ object ShopHelper {
     }
 
     /**
-     * Multi-signal query builder: combines YOLO class + Vision API labels + logo
+     * Multi-signal query builder: combines YOLO class + AI labels + logo
      */
     fun buildSearchQuery(
         yoloClass: String,

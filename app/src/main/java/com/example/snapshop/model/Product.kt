@@ -10,5 +10,5 @@ data class Product(
     val productUrl: String = "",
     val price: String = "",
     val source: String = "Amazon",  // "Amazon", "eBay", "AliExpress"
-    val confidence: Float = 0f       // Vision API match confidence
+    val confidence: Float = 0f       // AI match confidence
 )

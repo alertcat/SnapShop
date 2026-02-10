@@ -83,7 +83,7 @@ public class ShopCameraActivity extends AppCompatActivity {
     private long lastDetectTime = 0;
     private static final long DETECT_INTERVAL = 150; // ms between YOLO frames
 
-    // Track YOLO labels silently for Vision API fallback hint
+    // Track YOLO labels silently for LLM fallback hint
     private final Set<String> currentLabels = new HashSet<>();
     private Bitmap lastCaptureBitmap = null;
 
@@ -224,13 +224,13 @@ public class ShopCameraActivity extends AppCompatActivity {
             Yolo26Ncnn.Obj[] objects = yolo26Ncnn.detect(bitmap);
 
             // Update UI on main thread — bounding boxes only, no label chips
-            // (YOLO COCO labels are too coarse for shopping, Vision API handles identification)
+            // (YOLO COCO labels are too coarse for shopping, LLM handles identification)
             runOnUiThread(() -> {
                 int previewWidth = bitmap.getWidth();
                 int previewHeight = bitmap.getHeight();
                 overlayView.setPreviewSize(previewWidth, previewHeight);
                 overlayView.setResults(objects);
-                updateYoloHints(objects); // Track labels silently for Vision API fallback
+                updateYoloHints(objects); // Track labels silently for LLM fallback
             });
 
             bitmap.recycle();
@@ -242,7 +242,7 @@ public class ShopCameraActivity extends AppCompatActivity {
     }
 
     /**
-     * Silently track YOLO labels as a hint for Vision API fallback.
+     * Silently track YOLO labels as a hint for LLM fallback.
      * No chips or labels shown to user — YOLO COCO 80-class names are too
      * coarse and error-prone for shopping (e.g. phone → "remote").
      */

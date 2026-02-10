@@ -62,7 +62,7 @@
             android:scaleType="centerCrop"
             android:visibility="gone" />
 
-        <!-- Loading overlay: shown during Vision API call -->
+        <!-- Loading overlay: shown during AI identification -->
         <LinearLayout
             android:id="@+id/loadingOverlay"
             android:layout_width="match_parent"
@@ -90,7 +90,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Google Vision AI identifying brand &amp; model"
+                android:text="AI Smart Match — identifying brand &amp; model"
                 android:textColor="#AAAAAA"
                 android:textSize="12sp"
                 android:layout_marginTop="4dp" />
@@ -118,7 +118,7 @@
             android:gravity="center"
             android:layout_marginBottom="8dp" />
 
-        <!-- ChipGroup hidden: YOLO labels too coarse for shopping, Vision API used instead -->
+        <!-- ChipGroup hidden: YOLO labels too coarse for shopping, LLM used instead -->
         <com.google.android.material.chip.ChipGroup
             android:id="@+id/chipGroup"
             android:layout_width="match_parent"

@@ -16,7 +16,7 @@ import androidx.appcompat.app.AppCompatActivity;
  *
  * Shows search results from multiple shopping platforms.
  * Phase 1 (MVP): WebView/browser redirect with affiliate links
- * Phase 2: Native product cards with Google Vision API results
+ * Phase 2: Native product cards with AI identification results
  */
 public class ProductResultsActivity extends AppCompatActivity {
 

@@ -145,7 +145,7 @@ public class OverlayView extends View {
             // Draw detection box only — no label text
             // YOLO COCO labels are too coarse and often wrong for shopping
             // (e.g. phone → "remote"), so we only show the bounding box as
-            // a visual aid. Product identification is done by Vision API.
+            // a visual aid. Product identification is done by LLM.
             canvas.drawRect(left, top, right, bottom, boxPaint);
         }
     }

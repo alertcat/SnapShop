@@ -283,16 +283,30 @@ User's Solana Wallet (USDC)
 | Amazon Rekognition | Generic labels | $1.00 | "Phone, Gadget" |
 | **SnapShop LLM Engine** | **Brand + Model** | **$0.10** | **"Apple iPhone 16 Pro Max"** |
 
-Traditional vision APIs use fixed label taxonomies — they can't distinguish an iPhone from a Samsung. Multimodal LLMs have world knowledge and can identify specific products just like a human would.
+Traditional vision APIs use fixed label taxonomies — they can't distinguish an iPhone from a Samsung. Multimodal LLMs have world knowledge and can identify specific products just like a human would. And when the exact model is unknown (due to knowledge cutoff), SnapShop's attribute-based approach still finds the right product.
 
-### Anti-Hallucination Design
+### Knowledge Cutoff & Anti-Hallucination Design
+
+LLMs have training data cutoff dates — they can't identify products released after training. For example, a model trained before iPhone 16 might misidentify it as iPhone 14.
+
+**SnapShop solves this with attribute-based identification:**
+
 ```
-Rules in system prompt:
-- "If you cannot determine the exact model, leave model as empty string — DO NOT guess"
-- "confidence < 0.5 means you're mostly guessing"
-- Temperature: 0.1 (near-deterministic)
-- Structured JSON output only
+Instead of guessing: "iPhone 14 Pro Max Gold"     ← WRONG model!
+SnapShop describes:   "Apple iPhone Pro Max Desert Titanium triple camera"  ← Matches correctly!
 ```
+
+The system prompt injects the **current system date** and instructs the LLM to:
+
+| Strategy | How It Works |
+|----------|-------------|
+| **Describe, don't guess** | Focus on observable attributes (color, camera layout, material, form factor) |
+| **Never hallucinate model numbers** | Leave `model` empty when uncertain — wrong model is worse than no model |
+| **Attribute-based searchQuery** | Build search query from physical features, not guessed generations |
+| **Confidence gating** | Only include model number in fallback search if confidence ≥ 85% |
+| **Low temperature (0.1)** | Near-deterministic output, minimizes creative guessing |
+
+This ensures shopping platforms match the **correct product** regardless of LLM knowledge cutoff.
 
 ### Token Optimization
 - Images resized to ≤384px → only **258 tokens** in Gemini
