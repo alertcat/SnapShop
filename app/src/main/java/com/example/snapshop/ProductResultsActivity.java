@@ -93,8 +93,10 @@ public class ProductResultsActivity extends AppCompatActivity {
             return;
         }
 
-        // Open Bitrefill embed widget in in-app WebView
-        String bitrefillUrl = ShopHelper.INSTANCE.buildBitrefillEmbedUrl();
+        // Open Bitrefill website in in-app WebView
+        // Note: embed widget (embed.bitrefill.com) requires approved partner status.
+        // Apply at bitrefill.com/partner to unlock embed integration.
+        String bitrefillUrl = ShopHelper.INSTANCE.buildBitrefillAmazonUrl();
         openInAppWebView(bitrefillUrl, "bitrefill");
 
         Toast.makeText(this,

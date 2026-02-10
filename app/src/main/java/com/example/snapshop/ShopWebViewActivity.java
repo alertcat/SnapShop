@@ -6,7 +6,6 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.webkit.CookieManager;
-import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
@@ -25,7 +24,8 @@ import androidx.appcompat.app.AppCompatActivity;
  * Replaces Chrome Custom Tabs to keep users inside the app.
  * Supports platform-specific configuration:
  * - Amazon: custom Chrome UA to avoid 503 bot detection
- * - Bitrefill: embed widget with postMessage listener
+ * - Bitrefill: loads normal website (embed widget requires approved partner,
+ *              apply at bitrefill.com/partner)
  */
 public class ShopWebViewActivity extends AppCompatActivity {
 
@@ -44,8 +44,6 @@ public class ShopWebViewActivity extends AppCompatActivity {
     private TextView tvUrl;
     private ImageButton btnWebBack, btnWebForward, btnWebRefresh, btnWebClose;
 
-    private boolean isBitrefill = false;
-
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,7 +60,6 @@ public class ShopWebViewActivity extends AppCompatActivity {
         btnWebClose = findViewById(R.id.btnWebClose);
 
         String platform = getIntent().getStringExtra(EXTRA_PLATFORM);
-        isBitrefill = "bitrefill".equals(platform);
 
         // Configure WebView settings
         WebSettings settings = webView.getSettings();
@@ -79,6 +76,7 @@ public class ShopWebViewActivity extends AppCompatActivity {
 
         // Platform-specific User-Agent
         if ("amazon".equals(platform)) {
+            // Amazon requires a real Chrome UA to avoid 503 bot detection
             settings.setUserAgentString(CHROME_MOBILE_UA);
         }
 
@@ -86,11 +84,6 @@ public class ShopWebViewActivity extends AppCompatActivity {
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
         cookieManager.setAcceptThirdPartyCookies(webView, true);
-
-        // Bitrefill embed: add JavaScript interface for postMessage events
-        if (isBitrefill) {
-            webView.addJavascriptInterface(new BitrefillBridge(), "SnapShop");
-        }
 
         // WebViewClient - handles page navigation
         webView.setWebViewClient(new WebViewClient() {
@@ -111,17 +104,6 @@ public class ShopWebViewActivity extends AppCompatActivity {
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 updateNavigationButtons();
-
-                // Bitrefill: inject postMessage listener for embed events
-                if (isBitrefill) {
-                    view.evaluateJavascript(
-                            "window.addEventListener('message', function(e) { " +
-                            "  try { " +
-                            "    var data = (typeof e.data === 'string') ? e.data : JSON.stringify(e.data); " +
-                            "    SnapShop.onPaymentEvent(data); " +
-                            "  } catch(err) {} " +
-                            "});", null);
-                }
             }
         });
 
@@ -172,16 +154,6 @@ public class ShopWebViewActivity extends AppCompatActivity {
     private void updateNavigationButtons() {
         btnWebBack.setAlpha(webView.canGoBack() ? 1.0f : 0.3f);
         btnWebForward.setAlpha(webView.canGoForward() ? 1.0f : 0.3f);
-    }
-
-    /**
-     * JavaScript interface for Bitrefill embed postMessage events.
-     */
-    private class BitrefillBridge {
-        @JavascriptInterface
-        public void onPaymentEvent(String eventData) {
-            Log.d(TAG, "Bitrefill event: " + eventData);
-        }
     }
 
     @Override

@@ -30,8 +30,6 @@ import androidx.camera.view.PreviewView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.google.android.material.chip.Chip;
-import com.google.android.material.chip.ChipGroup;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.io.ByteArrayOutputStream;
@@ -44,16 +42,16 @@ import java.util.concurrent.Executors;
 // Vision API called via VisionApiHelper.analyzeImageBlocking() on background thread
 
 /**
- * ShopCameraActivity - Shopping camera with two-layer AI
+ * ShopCameraActivity - Shopping camera with AI product identification
  *
- * Layer 1 (Real-time, FREE): YOLO26 runs locally for bounding boxes and
- *     rough category labels. Helps user aim at objects. Tappable chips
- *     provide a quick-search shortcut via YOLO class name mapping.
+ * YOLO26 runs locally for real-time bounding boxes only (visual aid).
+ * YOLO labels are NOT shown to users because COCO 80-class labels are
+ * too coarse for shopping (e.g. "cell phone" instead of "iPhone 16 Pro Max",
+ * or misidentifying a phone as "remote").
  *
- * Layer 2 (On-demand, 1 API call): When user taps "Capture & Identify",
- *     the current frame is frozen and sent to Google Vision API for
- *     precise brand/model/product identification. Works even when YOLO
- *     detects nothing (e.g. a bag of dried blueberries).
+ * When user taps "Capture & Identify", the frame is sent to Google Vision API
+ * for precise brand/model/product identification via Web Detection + Logo
+ * Detection + Label Detection.
  *
  * This design keeps Vision API usage to ~1 call per user action,
  * staying well within the 1000 free calls/month quota.
@@ -66,7 +64,6 @@ public class ShopCameraActivity extends AppCompatActivity {
     private Yolo26Ncnn yolo26Ncnn = new Yolo26Ncnn();
     private PreviewView previewView;
     private OverlayView overlayView;
-    private ChipGroup chipGroup;
     private Button btnCaptureSearch;
     private Button btnBack;
     private TextView tvStatus;
@@ -84,7 +81,7 @@ public class ShopCameraActivity extends AppCompatActivity {
     private long lastDetectTime = 0;
     private static final long DETECT_INTERVAL = 150; // ms between YOLO frames
 
-    // Track currently detected labels to avoid chip flickering
+    // Track YOLO labels silently for Vision API fallback hint
     private final Set<String> currentLabels = new HashSet<>();
     private Bitmap lastCaptureBitmap = null;
 
@@ -95,7 +92,6 @@ public class ShopCameraActivity extends AppCompatActivity {
 
         previewView = findViewById(R.id.previewView);
         overlayView = findViewById(R.id.overlayView);
-        chipGroup = findViewById(R.id.chipGroup);
         btnCaptureSearch = findViewById(R.id.btnCaptureSearch);
         btnBack = findViewById(R.id.btnBack);
         tvStatus = findViewById(R.id.tvStatus);
@@ -225,13 +221,14 @@ public class ShopCameraActivity extends AppCompatActivity {
             // Run YOLO detection
             Yolo26Ncnn.Obj[] objects = yolo26Ncnn.detect(bitmap);
 
-            // Update UI on main thread
+            // Update UI on main thread — bounding boxes only, no label chips
+            // (YOLO COCO labels are too coarse for shopping, Vision API handles identification)
             runOnUiThread(() -> {
                 int previewWidth = bitmap.getWidth();
                 int previewHeight = bitmap.getHeight();
                 overlayView.setPreviewSize(previewWidth, previewHeight);
                 overlayView.setResults(objects);
-                updateChips(objects);
+                updateYoloHints(objects); // Track labels silently for Vision API fallback
             });
 
             bitmap.recycle();
@@ -243,54 +240,17 @@ public class ShopCameraActivity extends AppCompatActivity {
     }
 
     /**
-     * Update detection label chips (YOLO quick-search shortcuts)
+     * Silently track YOLO labels as a hint for Vision API fallback.
+     * No chips or labels shown to user — YOLO COCO 80-class names are too
+     * coarse and error-prone for shopping (e.g. phone → "remote").
      */
-    private void updateChips(Yolo26Ncnn.Obj[] objects) {
-        Set<String> newLabels = new HashSet<>();
+    private void updateYoloHints(Yolo26Ncnn.Obj[] objects) {
+        currentLabels.clear();
         if (objects != null) {
             for (Yolo26Ncnn.Obj obj : objects) {
                 if (obj.label != null && obj.prob > 0.5f) {
-                    newLabels.add(obj.label);
+                    currentLabels.add(obj.label);
                 }
-            }
-        }
-
-        // Only update if labels changed (avoid flickering)
-        if (!newLabels.equals(currentLabels)) {
-            currentLabels.clear();
-            currentLabels.addAll(newLabels);
-            chipGroup.removeAllViews();
-
-            for (String label : newLabels) {
-                Chip chip = new Chip(this);
-                chip.setText("\uD83D\uDD0D " + label);
-                chip.setClickable(true);
-                chip.setCheckable(false);
-                chip.setChipBackgroundColor(
-                        android.content.res.ColorStateList.valueOf(0xFF555555));
-                chip.setTextColor(getResources().getColor(android.R.color.white));
-
-                // Tap chip → hint to use Capture for precise identification
-                chip.setOnClickListener(v -> {
-                    Toast.makeText(ShopCameraActivity.this,
-                            "Detected: " + label + "\nTap 'Capture & Identify' for precise product match",
-                            Toast.LENGTH_LONG).show();
-                    // Flash the capture button to draw attention
-                    btnCaptureSearch.setBackgroundTintList(
-                            android.content.res.ColorStateList.valueOf(0xFFFF9800));
-                    btnCaptureSearch.postDelayed(() ->
-                            btnCaptureSearch.setBackgroundTintList(
-                                    android.content.res.ColorStateList.valueOf(0xFF4CAF50)), 600);
-                });
-
-                chipGroup.addView(chip);
-            }
-
-            if (newLabels.isEmpty()) {
-                tvStatus.setText("Point camera at any product, then tap capture");
-            } else {
-                String firstLabel = newLabels.iterator().next();
-                tvStatus.setText("Detected: " + firstLabel + " \u2192 Tap 'Capture & Identify' for exact product");
             }
         }
     }
