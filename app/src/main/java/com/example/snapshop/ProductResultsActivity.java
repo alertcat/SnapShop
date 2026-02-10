@@ -63,7 +63,7 @@ public class ProductResultsActivity extends AppCompatActivity {
         // Back button
         btnBack.setOnClickListener(v -> finish());
 
-        // Shopping platform buttons — in-app WebView (keeps user inside the app)
+        // Shopping platform buttons
         btnAmazon.setOnClickListener(v -> {
             String amazonUrl = ShopHelper.INSTANCE.buildAmazonSearchUrl(searchQuery);
             // Try Amazon app first (best UX), fallback to in-app WebView
@@ -73,8 +73,15 @@ public class ProductResultsActivity extends AppCompatActivity {
         });
         btnEbay.setOnClickListener(v ->
                 openInAppWebView(ShopHelper.INSTANCE.buildEbaySearchUrl(searchQuery), "ebay"));
+
+        // AliExpress: use Chrome Custom Tabs instead of WebView.
+        // AliExpress detects embedded WebViews (wv in UA) as low-trust environments
+        // and forces login walls / app download overlays. Chrome Custom Tabs use the
+        // system Chrome browser's UA, cookies, and trust level — indistinguishable
+        // from normal browsing. This avoids all deep link redirect and login issues.
         btnAliExpress.setOnClickListener(v ->
-                openInAppWebView(ShopHelper.INSTANCE.buildAliExpressSearchUrl(searchQuery), "aliexpress"));
+                CustomTabHelper.INSTANCE.openUrl(this,
+                        ShopHelper.INSTANCE.buildAliExpressSearchUrl(searchQuery)));
 
         // Buy with USDC button - opens Bitrefill for Amazon gift card
         btnBuyUsdc.setOnClickListener(v -> handleBuyWithUsdc());
