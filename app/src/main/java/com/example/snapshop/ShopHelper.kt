@@ -65,6 +65,14 @@ object ShopHelper {
     }
 
     /**
+     * Build Coinsbee Amazon gift card URL (backup for Bitrefill)
+     * Supports USDC, SOL, and 200+ other cryptocurrencies
+     */
+    fun buildCoinsbeeAmazonUrl(): String {
+        return "https://www.coinsbee.com/en/gift-cards/e-commerce/amazon/"
+    }
+
+    /**
      * Multi-signal query builder: combines YOLO class + AI labels + logo
      */
     fun buildSearchQuery(

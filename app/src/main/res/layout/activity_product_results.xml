@@ -119,20 +119,33 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Buy an Amazon gift card with USDC on Bitrefill, then use it to purchase your item."
+                android:text="Buy an Amazon gift card with USDC, then use it to purchase your item."
                 android:textColor="#AAAAAA"
                 android:textSize="13sp"
                 android:layout_marginBottom="12dp" />
 
-            <!-- Buy with USDC Button -->
+            <!-- Buy with USDC via Bitrefill -->
             <Button
                 android:id="@+id/btnBuyUsdc"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
-                android:text="Buy with USDC (via Bitrefill)"
+                android:text="Buy with USDC (Bitrefill)"
                 android:textAllCaps="false"
                 android:textSize="16sp"
                 android:backgroundTint="#512DA8"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Buy with USDC via Coinsbee (backup) -->
+            <Button
+                android:id="@+id/btnBuyUsdcCoinsbee"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:text="Buy with USDC (Coinsbee)"
+                android:textAllCaps="false"
+                android:textSize="16sp"
+                android:backgroundTint="#1E88E5"
                 android:textColor="#FFFFFF"
                 android:textStyle="bold"
                 android:layout_marginBottom="16dp" />

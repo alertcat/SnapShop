@@ -28,6 +28,7 @@ public class ProductResultsActivity extends AppCompatActivity {
     private Button btnEbay;
     private Button btnAliExpress;
     private Button btnBuyUsdc;
+    private Button btnBuyUsdcCoinsbee;
     private Button btnConnectWallet;
     private TextView tvWalletStatus;
 
@@ -51,6 +52,7 @@ public class ProductResultsActivity extends AppCompatActivity {
         btnEbay = findViewById(R.id.btnEbay);
         btnAliExpress = findViewById(R.id.btnAliExpress);
         btnBuyUsdc = findViewById(R.id.btnBuyUsdc);
+        btnBuyUsdcCoinsbee = findViewById(R.id.btnBuyUsdcCoinsbee);
         btnConnectWallet = findViewById(R.id.btnConnectWallet);
         tvWalletStatus = findViewById(R.id.tvWalletStatus);
 
@@ -83,8 +85,9 @@ public class ProductResultsActivity extends AppCompatActivity {
                 CustomTabHelper.INSTANCE.openUrl(this,
                         ShopHelper.INSTANCE.buildAliExpressSearchUrl(searchQuery)));
 
-        // Buy with USDC button - opens Bitrefill for Amazon gift card
+        // Buy with USDC buttons - Bitrefill (primary) + Coinsbee (backup)
         btnBuyUsdc.setOnClickListener(v -> handleBuyWithUsdc());
+        btnBuyUsdcCoinsbee.setOnClickListener(v -> handleBuyWithCoinsbee());
 
         // Wallet connection
         btnConnectWallet.setOnClickListener(v -> handleWalletClick());
@@ -108,6 +111,24 @@ public class ProductResultsActivity extends AppCompatActivity {
 
         Toast.makeText(this,
                 "Buy an Amazon gift card with USDC on Bitrefill,\nthen use it to purchase your item!",
+                Toast.LENGTH_LONG).show();
+    }
+
+    /**
+     * Handle "Buy with USDC (Coinsbee)" button — backup for Bitrefill.
+     * Opens Coinsbee Amazon gift card page in Chrome Custom Tabs.
+     */
+    private void handleBuyWithCoinsbee() {
+        if (!walletHelper.isConnected()) {
+            Toast.makeText(this, "Please connect wallet first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String coinsbeeUrl = ShopHelper.INSTANCE.buildCoinsbeeAmazonUrl();
+        CustomTabHelper.INSTANCE.openUrl(this, coinsbeeUrl);
+
+        Toast.makeText(this,
+                "Buy an Amazon gift card with USDC on Coinsbee,\nthen use it to purchase your item!",
                 Toast.LENGTH_LONG).show();
     }
 

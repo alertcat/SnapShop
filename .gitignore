@@ -92,3 +92,10 @@ CMakeCache.txt
 
 # Terminal state
 terminals/
+
+# Temporary scripts
+analyze_fonts.py
+fix_fonts.py
+
+# Presentation files (too large for git)
+*.pptx
