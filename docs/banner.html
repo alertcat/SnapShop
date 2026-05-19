@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SnapShop dApp Store Banner — 1200x600</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: #0a0a0a;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: #fff;
+  }
+  body {
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+    align-items: flex-start;
+  }
+  .group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .label {
+    color: #888;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+  .hint {
+    color: #666;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+
+  /* ============ BANNER BASE ============ */
+  .banner {
+    width: 1200px;
+    height: 600px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 28px;
+    background: radial-gradient(ellipse at 75% 50%, #1a4d3f 0%, #0d2b24 35%, #061612 75%, #030c0a 100%);
+    isolation: isolate;
+  }
+  .banner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 78% 55%, rgba(0, 200, 150, 0.18) 0%, transparent 45%),
+      radial-gradient(circle at 95% 90%, rgba(212, 168, 87, 0.10) 0%, transparent 40%);
+    pointer-events: none;
+  }
+  .banner::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+  }
+
+  /* corner bracket — subtle AI detection nod */
+  .bracket {
+    position: absolute;
+    width: 32px;
+    height: 32px;
+    border: 2px solid #00C896;
+    opacity: 0.55;
+  }
+  .bracket.tr { top: 50px; right: 60px; border-left: none; border-bottom: none; }
+  .bracket.br { bottom: 50px; right: 60px; border-left: none; border-top: none; }
+
+  /* icon placeholder */
+  .icon-slot {
+    position: absolute;
+    top: 60px;
+    left: 60px;
+    width: 180px;
+    height: 180px;
+    border: 1.5px dashed rgba(255,255,255,0.18);
+    border-radius: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: rgba(255,255,255,0.35);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  /* content area */
+  .content {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 300px;
+    right: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  /* ============ VERSION A ============ */
+  .v-a .headline {
+    color: #F5E6D3;
+    font-size: 96px;
+    font-weight: 800;
+    line-height: 0.92;
+    letter-spacing: -0.035em;
+  }
+  .v-a .headline .mint { color: #00C896; }
+  .v-a .sub {
+    margin-top: 28px;
+    color: rgba(245, 230, 211, 0.7);
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: 0.005em;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .v-a .sub .dash {
+    display: inline-block;
+    width: 28px;
+    height: 2px;
+    background: #00C896;
+  }
+
+  /* ============ VERSION B ============ */
+  .v-b .eyebrow {
+    color: #00C896;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+  .v-b .headline {
+    color: #F5E6D3;
+    font-size: 76px;
+    font-weight: 700;
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+  }
+  .v-b .flow {
+    margin-top: 32px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .v-b .step {
+    color: #F5E6D3;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    background: rgba(245, 230, 211, 0.08);
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: 1px solid rgba(245, 230, 211, 0.14);
+  }
+  .v-b .step.mint {
+    color: #00C896;
+    background: rgba(0, 200, 150, 0.10);
+    border-color: rgba(0, 200, 150, 0.35);
+  }
+  .v-b .arrow {
+    color: rgba(0, 200, 150, 0.6);
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  /* ============ VERSION C ============ */
+  .v-c .headline {
+    color: #F5E6D3;
+    font-size: 88px;
+    font-weight: 800;
+    line-height: 0.95;
+    letter-spacing: -0.035em;
+  }
+  .v-c .headline .stack {
+    display: block;
+  }
+  .v-c .headline .stack:nth-child(2) { color: rgba(245, 230, 211, 0.55); }
+  .v-c .headline .stack:nth-child(3) { color: #00C896; }
+  .v-c .meta {
+    margin-top: 36px;
+    display: flex;
+    gap: 32px;
+    color: rgba(245, 230, 211, 0.7);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .v-c .meta span::before {
+    content: '◆';
+    color: #00C896;
+    margin-right: 10px;
+    font-size: 10px;
+    vertical-align: middle;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- ========== VERSION A — Bold three-line ========== -->
+<div class="group">
+  <div class="label">Version A · Bold three-line</div>
+  <div class="banner v-a" id="banner-a">
+    <div class="icon-slot">App icon<br>overlay</div>
+    <span class="bracket tr"></span>
+    <span class="bracket br"></span>
+    <div class="content">
+      <h1 class="headline">
+        See it.<br>
+        Snap it.<br>
+        Buy with <span class="mint">USDC</span>.
+      </h1>
+      <p class="sub"><span class="dash"></span>AI camera shopping on Solana</p>
+    </div>
+  </div>
+  <div class="hint">Strongest impact. Reads from any distance. Best for store discovery.</div>
+</div>
+
+<!-- ========== VERSION B — Editorial flow ========== -->
+<div class="group">
+  <div class="label">Version B · Editorial with flow</div>
+  <div class="banner v-b" id="banner-b">
+    <div class="icon-slot">App icon<br>overlay</div>
+    <span class="bracket tr"></span>
+    <span class="bracket br"></span>
+    <div class="content">
+      <div class="eyebrow">SnapShop &nbsp;·&nbsp; Solana Mobile</div>
+      <h1 class="headline">
+        The AI camera<br>for crypto shoppers.
+      </h1>
+      <div class="flow">
+        <span class="step">Snap</span>
+        <span class="arrow">→</span>
+        <span class="step">Identify</span>
+        <span class="arrow">→</span>
+        <span class="step mint">Pay USDC</span>
+      </div>
+    </div>
+  </div>
+  <div class="hint">Most informative. Tells the full story in one frame. Best for users who read.</div>
+</div>
+
+<!-- ========== VERSION C — Stacked statement ========== -->
+<div class="group">
+  <div class="label">Version C · Stacked statement</div>
+  <div class="banner v-c" id="banner-c">
+    <div class="icon-slot">App icon<br>overlay</div>
+    <span class="bracket tr"></span>
+    <span class="bracket br"></span>
+    <div class="content">
+      <h1 class="headline">
+        <span class="stack">Point.</span>
+        <span class="stack">Identify.</span>
+        <span class="stack">Pay with USDC.</span>
+      </h1>
+      <div class="meta">
+        <span>YOLO26 AI</span>
+        <span>On-chain proof</span>
+        <span>Built for Seeker</span>
+      </div>
+    </div>
+  </div>
+  <div class="hint">Most premium feel. Three colors create rhythm. Best for "big company" vibe.</div>
+</div>
+
+</body>
+</html>

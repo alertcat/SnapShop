@@ -1,4 +1,4 @@
-package com.example.snapshop
+package com.alertcat.snapshop
 
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity

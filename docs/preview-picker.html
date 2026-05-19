@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SnapShop Demo Frame Picker</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0a0a0a;
+    color: #f5f5f5;
+    font-family: 'Inter', sans-serif;
+    padding: 32px;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1 {
+    font-size: 22px;
+    margin-bottom: 8px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+  .sub {
+    color: #888;
+    font-size: 13px;
+    margin-bottom: 28px;
+    line-height: 1.6;
+  }
+  .sub b { color: #00E5A8; }
+  .needs {
+    background: rgba(0, 229, 168, 0.08);
+    border: 1px solid rgba(0, 229, 168, 0.3);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 28px;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .needs ul { margin-left: 20px; margin-top: 6px; }
+  .needs li { color: #ddd; margin-bottom: 4px; }
+  .needs li b { color: #00E5A8; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+  }
+  .thumb {
+    background: #1a1a1a;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1.5px solid rgba(255,255,255,0.06);
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .thumb:hover {
+    border-color: #00E5A8;
+    transform: translateY(-2px);
+  }
+  .thumb img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .thumb .meta {
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid rgba(255,255,255,0.05);
+  }
+  .thumb .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #888;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+  }
+  .thumb .ts {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: #00E5A8;
+    font-weight: 700;
+  }
+  .thumb.selected {
+    border-color: #00E5A8;
+    box-shadow: 0 0 0 3px rgba(0, 229, 168, 0.25);
+  }
+  .thumb .check {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #00E5A8;
+    color: #0D2B24;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 14px;
+    z-index: 2;
+  }
+  .thumb.selected .check { display: flex; }
+  .thumb .label {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: rgba(0, 229, 168, 0.95);
+    color: #0D2B24;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 4px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.08em;
+    display: none;
+  }
+  .thumb.selected .label { display: block; }
+
+  .summary {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(13, 43, 36, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1.5px solid rgba(0, 229, 168, 0.4);
+    border-radius: 18px;
+    padding: 16px 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    min-width: 480px;
+    z-index: 100;
+  }
+  .summary .title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: #00E5A8;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .summary .selections {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    color: #f5f5f5;
+    line-height: 1.7;
+  }
+  .summary .selections .slot {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .summary .selections .slot .k { color: #888; }
+  .summary .selections .slot .v { color: #00E5A8; font-weight: 700; }
+  .summary .copy-hint {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    font-size: 11px;
+    color: #888;
+  }
+</style>
+</head>
+<body>
+
+<h1>Pick 4 frames for dApp Preview</h1>
+<p class="sub">Click each thumbnail in the order you want. The frames are at 20-second intervals through the 6:40 demo video. Click again to deselect.</p>
+
+<div class="needs">
+  <b style="color:#00E5A8">You need 4 frames covering:</b>
+  <ul>
+    <li><b>① IDENTIFY</b> — the moment AI recognizes a product (camera view with detection)</li>
+    <li><b>② PLATFORM</b> — choosing between Amazon / eBay / AliExpress</li>
+    <li><b>③ SHOP</b> — browsing or selecting the product to buy</li>
+    <li><b>④ PAY</b> — the USDC payment / wallet step</li>
+  </ul>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<div class="summary">
+  <div class="title">Your picks · click thumbnails in order</div>
+  <div class="selections" id="picks">
+    <div class="slot"><span class="k">① IDENTIFY</span><span class="v" id="p1">—</span></div>
+    <div class="slot"><span class="k">② PLATFORM</span><span class="v" id="p2">—</span></div>
+    <div class="slot"><span class="k">③ SHOP</span><span class="v" id="p3">—</span></div>
+    <div class="slot"><span class="k">④ PAY</span><span class="v" id="p4">—</span></div>
+  </div>
+  <div class="copy-hint">Tell me your 4 timestamps and I'll build the final dApp Preview HTML.</div>
+</div>
+
+<script>
+  const TOTAL = 20;
+  const grid = document.getElementById('grid');
+  const labels = ['IDENTIFY', 'PLATFORM', 'SHOP', 'PAY'];
+  const slots = [null, null, null, null];
+
+  function fmt(s) {
+    const m = Math.floor(s/60), r = s % 60;
+    return `${m}:${String(r).padStart(2,'0')}`;
+  }
+
+  for (let i = 1; i <= TOTAL; i++) {
+    const idx = String(i).padStart(2, '0');
+    const t = (i - 1) * 20;
+    const div = document.createElement('div');
+    div.className = 'thumb';
+    div.dataset.idx = i;
+    div.dataset.ts = t;
+    div.innerHTML = `
+      <div class="check"></div>
+      <div class="label"></div>
+      <img src="previews/thumb-${idx}.jpg" alt="frame ${i}">
+      <div class="meta">
+        <span class="num">#${idx}</span>
+        <span class="ts">${fmt(t)}</span>
+      </div>
+    `;
+    div.addEventListener('click', () => toggle(i, t, div));
+    grid.appendChild(div);
+  }
+
+  function toggle(i, t, el) {
+    const existing = slots.findIndex(s => s && s.i === i);
+    if (existing >= 0) {
+      slots[existing] = null;
+      render();
+      return;
+    }
+    const empty = slots.findIndex(s => s === null);
+    if (empty < 0) return;
+    slots[empty] = { i, t, el };
+    render();
+  }
+
+  function render() {
+    document.querySelectorAll('.thumb').forEach(t => {
+      t.classList.remove('selected');
+      t.querySelector('.check').textContent = '';
+      t.querySelector('.label').textContent = '';
+    });
+    slots.forEach((s, idx) => {
+      const sel = document.getElementById(`p${idx + 1}`);
+      if (!s) { sel.textContent = '—'; return; }
+      s.el.classList.add('selected');
+      s.el.querySelector('.check').textContent = idx + 1;
+      s.el.querySelector('.label').textContent = labels[idx];
+      sel.textContent = `#${String(s.i).padStart(2,'0')}  ·  ${fmt(s.t)}`;
+    });
+  }
+</script>
+
+</body>
+</html>

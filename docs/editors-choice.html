@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SnapShop Editor's Choice Graphic — 1200x1200</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: #0a0a0a;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: #fff;
+    padding: 32px;
+  }
+  .info {
+    color: #888;
+    font-size: 12px;
+    margin-bottom: 14px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  /* ================ MAIN CANVAS ================ */
+  .graphic {
+    width: 1200px;
+    height: 1200px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 56px;
+    background:
+      radial-gradient(circle at 50% 42%, rgba(0, 200, 150, 0.22) 0%, transparent 38%),
+      radial-gradient(ellipse at center top, #1a4d3f 0%, #0d2b24 35%, #061612 75%, #030c0a 100%);
+    isolation: isolate;
+  }
+  /* faint grid texture */
+  .graphic::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0, 200, 150, 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 200, 150, 0.025) 1px, transparent 1px);
+    background-size: 80px 80px;
+    mask-image: radial-gradient(circle at center, black 35%, transparent 75%);
+    pointer-events: none;
+  }
+  /* vignette */
+  .graphic::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%);
+    pointer-events: none;
+  }
+
+  /* ================ TOP BAR ================ */
+  .top-bar {
+    position: absolute;
+    top: 70px;
+    left: 80px;
+    right: 80px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+  }
+  .ai-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 28px;
+    background: rgba(0, 200, 150, 0.12);
+    border: 1.5px solid rgba(0, 200, 150, 0.55);
+    border-radius: 999px;
+    color: #00E5A8;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 0 32px rgba(0, 200, 150, 0.2);
+  }
+  .ai-badge .pulse {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #00E5A8;
+    box-shadow: 0 0 16px #00E5A8;
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+  }
+  .tech-stack {
+    font-family: 'JetBrains Mono', monospace;
+    color: rgba(245, 230, 211, 0.55);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-align: right;
+    line-height: 1.5;
+  }
+  .tech-stack .tech-row { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+  .tech-stack .glyph { color: #00C896; }
+
+  /* ================ HERO ================ */
+  .stage {
+    position: absolute;
+    top: 200px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 720px;
+    height: 720px;
+  }
+  .product {
+    position: absolute;
+    inset: 70px;
+    width: 580px;
+    height: 580px;
+    border-radius: 18px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #1a4d3f 0%, #0d2b24 50%, #061612 100%);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+  }
+  .product img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  /* fallback gradient sneaker silhouette if image fails */
+  .product .fallback {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(0, 200, 150, 0.3);
+    font-size: 96px;
+    font-weight: 800;
+  }
+
+  /* Detection bounding box */
+  .bbox { position: absolute; inset: 30px; pointer-events: none; }
+  .corner {
+    position: absolute;
+    width: 70px;
+    height: 70px;
+    border: 5px solid #00E5A8;
+    box-shadow: 0 0 24px rgba(0, 229, 168, 0.6);
+  }
+  .corner.tl { top:0; left:0; border-right:none; border-bottom:none; border-top-left-radius: 8px; }
+  .corner.tr { top:0; right:0; border-left:none; border-bottom:none; border-top-right-radius: 8px; }
+  .corner.bl { bottom:0; left:0; border-right:none; border-top:none; border-bottom-left-radius: 8px; }
+  .corner.br { bottom:0; right:0; border-left:none; border-top:none; border-bottom-right-radius: 8px; }
+
+  /* Scan line */
+  .scan {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 2.5px;
+    background: linear-gradient(90deg, transparent 0%, rgba(0, 229, 168, 0.9) 50%, transparent 100%);
+    box-shadow: 0 0 16px rgba(0, 229, 168, 0.8);
+    pointer-events: none;
+  }
+  /* Confidence ticker top */
+  .ticker {
+    position: absolute;
+    top: -36px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: #00E5A8;
+    letter-spacing: 0.18em;
+    padding: 0 6px;
+  }
+  .ticker .seg { display: flex; align-items: center; gap: 8px; }
+  .ticker .dot { width: 6px; height: 6px; border-radius: 50%; background: #00E5A8; }
+
+  /* Detection feature dots on product */
+  .feat {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #00E5A8;
+    box-shadow: 0 0 0 4px rgba(0, 229, 168, 0.25), 0 0 20px #00E5A8;
+    z-index: 4;
+  }
+  .feat-1 { top: 28%; left: 38%; }
+  .feat-2 { top: 56%; left: 62%; }
+  .feat-3 { top: 72%; left: 30%; }
+
+  /* ================ FLOATING LABELS ================ */
+  .lbl {
+    position: absolute;
+    background: rgba(8, 28, 23, 0.92);
+    backdrop-filter: blur(20px);
+    border: 1.5px solid rgba(0, 200, 150, 0.55);
+    border-radius: 14px;
+    padding: 14px 20px;
+    z-index: 6;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255,255,255,0.04) inset;
+    min-width: 200px;
+  }
+  .lbl .kind {
+    color: #00E5A8;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .lbl .kind::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #00E5A8;
+    box-shadow: 0 0 8px #00E5A8;
+  }
+  .lbl .value {
+    color: #F5E6D3;
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    justify-content: space-between;
+  }
+  .lbl .conf {
+    color: #00E5A8;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    background: rgba(0, 229, 168, 0.12);
+    padding: 2px 8px;
+    border-radius: 6px;
+  }
+  /* Position labels around the bbox */
+  .lbl-1 { top: 230px; right: 70px; }
+  .lbl-2 { top: 470px; left: 70px; }
+  .lbl-3 { top: 720px; right: 70px; }
+
+  /* ================ BOTTOM BAR ================ */
+  .bottom {
+    position: absolute;
+    bottom: 70px;
+    left: 80px;
+    right: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    z-index: 10;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .brand-mark {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #F5E6D3 0%, #d4c4ad 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #0D2B24;
+    font-size: 30px;
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  .brand-text { display: flex; flex-direction: column; gap: 4px; }
+  .brand-text .n {
+    color: #F5E6D3;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .brand-text .t {
+    color: rgba(245, 230, 211, 0.55);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  .pay {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: linear-gradient(135deg, rgba(0, 229, 168, 0.18), rgba(0, 200, 150, 0.06));
+    border: 1.5px solid rgba(0, 229, 168, 0.55);
+    border-radius: 20px;
+    padding: 18px 24px;
+    backdrop-filter: blur(16px);
+  }
+  .pay-info { display: flex; flex-direction: column; gap: 2px; line-height: 1; }
+  .pay-info .tag {
+    color: rgba(245, 230, 211, 0.55);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+  .pay-info .num {
+    color: #F5E6D3;
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-top: 4px;
+  }
+  .pay-info .num .u { color: #00E5A8; font-size: 22px; margin-left: 6px; }
+  .pay-btn {
+    background: #00E5A8;
+    color: #0D2B24;
+    border-radius: 999px;
+    padding: 14px 24px;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 8px 24px rgba(0, 229, 168, 0.35);
+  }
+  .pay-btn .arrow { font-size: 18px; }
+
+</style>
+</head>
+<body>
+
+<p class="info">SnapShop · Editor's Choice Graphic · 1200×1200 · AI Identification focused</p>
+
+<div class="graphic">
+
+  <!-- TOP BAR : the AI claim, front and center -->
+  <div class="top-bar">
+    <div class="ai-badge">
+      <span class="pulse"></span>
+      AI Vision Engine
+    </div>
+    <div class="tech-stack">
+      <div class="tech-row"><span class="glyph">▸</span> YOLO26 NCNN</div>
+      <div class="tech-row"><span class="glyph">▸</span> GEMINI 2.5 FLASH</div>
+    </div>
+  </div>
+
+  <!-- STAGE : product + AI overlay -->
+  <div class="stage">
+
+    <div class="product">
+      <img
+        src="https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=1200&q=85&auto=format&fit=crop"
+        alt="Product"
+        onerror="this.style.display='none'"
+      >
+      <div class="fallback">PRODUCT</div>
+    </div>
+
+    <div class="bbox">
+      <div class="ticker">
+        <div class="seg"><span class="dot"></span>DETECTING</div>
+        <div class="seg">CONF 0.96 <span class="dot"></span></div>
+      </div>
+      <span class="corner tl"></span>
+      <span class="corner tr"></span>
+      <span class="corner bl"></span>
+      <span class="corner br"></span>
+      <div class="scan"></div>
+    </div>
+
+    <span class="feat feat-1"></span>
+    <span class="feat feat-2"></span>
+    <span class="feat feat-3"></span>
+
+  </div>
+
+  <!-- FLOATING LABELS : prove what AI sees -->
+  <div class="lbl lbl-1">
+    <div class="kind">Brand · Model</div>
+    <div class="value">Nike Air Max 1 <span class="conf">98%</span></div>
+  </div>
+
+  <div class="lbl lbl-2">
+    <div class="kind">Colorway</div>
+    <div class="value">White / Volt <span class="conf">94%</span></div>
+  </div>
+
+  <div class="lbl lbl-3">
+    <div class="kind">Material</div>
+    <div class="value">Leather + Mesh <span class="conf">91%</span></div>
+  </div>
+
+  <!-- BOTTOM BAR : brand + payment -->
+  <div class="bottom">
+    <div class="brand">
+      <div class="brand-mark">S</div>
+      <div class="brand-text">
+        <div class="n">SnapShop</div>
+        <div class="t">AI · ONCHAIN · USDC</div>
+      </div>
+    </div>
+
+    <div class="pay">
+      <div class="pay-info">
+        <div class="tag">Pay with</div>
+        <div class="num">$129<span class="u">≈ 129 USDC</span></div>
+      </div>
+      <div class="pay-btn">BUY <span class="arrow">→</span></div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

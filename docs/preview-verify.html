@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SnapShop 5 Frames · Full Resolution</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0a0a0a;
+    color: #f5f5f5;
+    font-family: 'Inter', sans-serif;
+    padding: 32px;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1 {
+    font-size: 22px;
+    margin-bottom: 8px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+  .sub {
+    color: #888;
+    font-size: 13px;
+    margin-bottom: 24px;
+    line-height: 1.6;
+    max-width: 1100px;
+  }
+  .sub b { color: #00E5A8; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 20px;
+  }
+  .card {
+    background: #1a1a1a;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1.5px solid rgba(255,255,255,0.08);
+    transition: border-color 0.15s;
+  }
+  .card:hover { border-color: #00E5A8; }
+
+  .shot-wrap {
+    position: relative;
+    display: block;
+    cursor: zoom-in;
+  }
+  .shot-wrap img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .meta {
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .role {
+    color: #00E5A8;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .ts {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: #f5f5f5;
+    font-weight: 600;
+  }
+  .ts .frame { color: #888; margin-right: 6px; }
+  .size {
+    color: #666;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+  }
+  .badge {
+    display: inline-block;
+    color: #00E5A8;
+    background: rgba(0, 229, 168, 0.12);
+    border: 1px solid rgba(0, 229, 168, 0.4);
+    border-radius: 5px;
+    padding: 2px 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    margin-top: 4px;
+    width: max-content;
+  }
+
+  .note {
+    margin-top: 28px;
+    background: rgba(0, 229, 168, 0.06);
+    border: 1px solid rgba(0, 229, 168, 0.25);
+    border-radius: 12px;
+    padding: 16px 20px;
+    font-size: 13px;
+    color: #ddd;
+    line-height: 1.7;
+  }
+  .note b { color: #00E5A8; }
+</style>
+</head>
+<body>
+
+<h1>5 Picks · Full Resolution</h1>
+<p class="sub">
+  All five frames are the actual <b>976×2176 PNG</b>. <b>Click any image</b> to open the original in a new tab.
+  Masks removed. <b>Frame 5</b> still contains personal info (username, address, URL) and will be masked by you in a separate tool before upload.
+</p>
+
+<div class="grid">
+
+  <div class="card">
+    <a class="shot-wrap" href="previews/shot-01-detecting.png" target="_blank">
+      <img src="previews/shot-01-detecting.png" alt="detecting">
+    </a>
+    <div class="meta">
+      <span class="role">① Detecting</span>
+      <span class="ts"><span class="frame">@24.00s</span>0:24</span>
+      <span class="size">1236 KB</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <a class="shot-wrap" href="previews/shot-02-identified.png" target="_blank">
+      <img src="previews/shot-02-identified.png" alt="identified">
+    </a>
+    <div class="meta">
+      <span class="role">② Identified</span>
+      <span class="ts"><span class="frame">@36.00s</span>0:36</span>
+      <span class="size">532 KB</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <a class="shot-wrap" href="previews/shot-03-platform.png" target="_blank">
+      <img src="previews/shot-03-platform.png" alt="platform">
+    </a>
+    <div class="meta">
+      <span class="role">③ Platform</span>
+      <span class="ts"><span class="frame">@39.50s</span>0:39.50</span>
+      <span class="size">179 KB</span>
+      <span class="badge">UPDATED</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <a class="shot-wrap" href="previews/shot-04-paid.png" target="_blank">
+      <img src="previews/shot-04-paid.png" alt="paid">
+    </a>
+    <div class="meta">
+      <span class="role">④ Paid</span>
+      <span class="ts"><span class="frame">@146.50s</span>2:26.50</span>
+      <span class="size">68 KB</span>
+      <span class="badge">UPDATED</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <a class="shot-wrap" href="previews/shot-05-order.png" target="_blank">
+      <img src="previews/shot-05-order.png" alt="order confirmation">
+    </a>
+    <div class="meta">
+      <span class="role">⑤ Order</span>
+      <span class="ts"><span class="frame">@377s</span>6:17</span>
+      <span class="size">483 KB · mask externally</span>
+    </div>
+  </div>
+
+</div>
+
+<div class="note">
+  <b>Confirm "39:50" and "2:26:50" were interpreted as 39.50s and 146.50s</b> (centiseconds). If you actually meant frame numbers (e.g., 50th frame at 60fps) the timestamps would be slightly different. Click frames 3 and 4 to inspect at full resolution. If correct, tell me to proceed to the final dapp-previews build.
+</div>
+
+</body>
+</html>

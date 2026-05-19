@@ -49,7 +49,7 @@
             android:layout_gravity="center" />
 
         <!-- Detection overlay (YOLO bounding boxes) -->
-        <com.example.snapshop.OverlayView
+        <com.alertcat.snapshop.OverlayView
             android:id="@+id/overlayView"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />

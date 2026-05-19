@@ -305,7 +305,7 @@ This ensures shopping platforms match the **correct product** regardless of LLM 
 
 ```
 app/src/main/
-├── java/com/example/snapshop/
+├── java/com/alertcat/snapshop/
 │   ├── MainActivity.java          # Home screen + wallet connection
 │   ├── DetectActivity.java        # YOLO detection + on-chain memo
 │   ├── ShopCameraActivity.java    # AI shopping camera

@@ -99,3 +99,8 @@ fix_fonts.py
 
 # Presentation files (too large for git)
 *.pptx
+
+# Demo video, extracted frames, and exported previews (contain personal info from real test purchases)
+/docs/previews/
+/snapshop/
+/snapshop.zip

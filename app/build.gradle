@@ -11,16 +11,16 @@ if (localPropertiesFile.exists()) {
 }
 
 android {
-    namespace 'com.example.snapshop'
+    namespace 'com.alertcat.snapshop'
     compileSdk 34
     ndkVersion "27.0.12077973"
 
     defaultConfig {
-        applicationId "com.example.snapshop"
+        applicationId "com.alertcat.snapshop"
         minSdk 24
         targetSdk 34
         versionCode 1
-        versionName "1.0"
+        versionName "1.1"
 
         // Inject API keys from local.properties into BuildConfig
         buildConfigField "String", "GOOGLE_VISION_API_KEY", "\"${localProperties.getProperty('GOOGLE_VISION_API_KEY', '')}\""
@@ -59,6 +59,7 @@ android {
 
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

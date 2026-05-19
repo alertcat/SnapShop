@@ -6,5 +6,5 @@
 }
 
 # Keep Yolo26Ncnn class
--keep class com.example.snapshop.Yolo26Ncnn { *; }
--keep class com.example.snapshop.Yolo26Ncnn$Obj { *; }
+-keep class com.alertcat.snapshop.Yolo26Ncnn { *; }
+-keep class com.alertcat.snapshop.Yolo26Ncnn$Obj { *; }

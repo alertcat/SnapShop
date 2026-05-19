@@ -1,4 +1,4 @@
-package com.example.snapshop
+package com.alertcat.snapshop
 
 import android.net.Uri
 import android.util.Log

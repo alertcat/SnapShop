@@ -1,4 +1,4 @@
-package com.example.snapshop;
+package com.alertcat.snapshop;
 
 import android.content.ActivityNotFoundException;
 import android.content.Intent;

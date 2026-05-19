@@ -1,4 +1,4 @@
-package com.example.snapshop
+package com.alertcat.snapshop
 
 import android.graphics.Bitmap
 import android.util.Base64

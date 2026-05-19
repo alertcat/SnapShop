@@ -41,7 +41,7 @@ JNIEXPORT void JNI_OnUnload(JavaVM* vm, void* reserved) {
     g_yolo = 0;
 }
 
-JNIEXPORT jboolean JNICALL Java_com_example_snapshop_Yolo26Ncnn_loadModel(JNIEnv* env, jobject thiz, jobject assetManager, jint modelid, jint useGpu) {
+JNIEXPORT jboolean JNICALL Java_com_alertcat_snapshop_Yolo26Ncnn_loadModel(JNIEnv* env, jobject thiz, jobject assetManager, jint modelid, jint useGpu) {
     if (modelid < 0 || modelid > 0) {
         return JNI_FALSE;
     }
@@ -75,7 +75,7 @@ JNIEXPORT jboolean JNICALL Java_com_example_snapshop_Yolo26Ncnn_loadModel(JNIEnv
     return JNI_TRUE;
 }
 
-JNIEXPORT jobjectArray JNICALL Java_com_example_snapshop_Yolo26Ncnn_detect(JNIEnv* env, jobject thiz, jobject bitmap) {
+JNIEXPORT jobjectArray JNICALL Java_com_alertcat_snapshop_Yolo26Ncnn_detect(JNIEnv* env, jobject thiz, jobject bitmap) {
     double start_time = ncnn::get_current_time();
 
     AndroidBitmapInfo info;
@@ -105,8 +105,8 @@ JNIEXPORT jobjectArray JNICALL Java_com_example_snapshop_Yolo26Ncnn_detect(JNIEn
     }
 
     // Create result array
-    jclass objCls = env->FindClass("com/example/snapshop/Yolo26Ncnn$Obj");
-    jmethodID objInit = env->GetMethodID(objCls, "<init>", "(Lcom/example/snapshop/Yolo26Ncnn;)V");
+    jclass objCls = env->FindClass("com/alertcat/snapshop/Yolo26Ncnn$Obj");
+    jmethodID objInit = env->GetMethodID(objCls, "<init>", "(Lcom/alertcat/snapshop/Yolo26Ncnn;)V");
     jfieldID xId = env->GetFieldID(objCls, "x", "F");
     jfieldID yId = env->GetFieldID(objCls, "y", "F");
     jfieldID wId = env->GetFieldID(objCls, "w", "F");

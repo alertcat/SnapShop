@@ -1,4 +1,4 @@
-package com.example.snapshop.model
+package com.alertcat.snapshop.model
 
 /**
  * Product data model for shopping results
