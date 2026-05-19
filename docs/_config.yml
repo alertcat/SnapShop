@@ -1,6 +1,6 @@
 title: SnapShop
 description: The AI camera built for crypto shoppers. Point at any product, identify with AI, pay with USDC on Solana.
-theme: jekyll-theme-midnight
+theme: jekyll-theme-minimal
 url: https://alertcat.github.io
 baseurl: /SnapShop
 
