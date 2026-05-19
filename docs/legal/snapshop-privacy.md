@@ -1,9 +1,11 @@
-<!--
-  SnapShop Privacy Policy (Markdown)
-  Paste this content into a new Typecho page (Markdown mode).
-  Suggested slug: snapshop-privacy  |  Title: SnapShop Privacy Policy
-  Final URL example: https://alertcat.info/index.php/snapshop-privacy.html
--->
+---
+layout: default
+title: Privacy Policy
+description: SnapShop Privacy Policy explaining data handling
+permalink: /privacy/
+---
+
+# Privacy Policy
 
 **Last updated:** May 19, 2026
 **Application:** SnapShop (Android, Solana Mobile)

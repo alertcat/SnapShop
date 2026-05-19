@@ -1,9 +1,11 @@
-<!--
-  SnapShop Terms of Use (Markdown)
-  Paste this content into a new Typecho page (Markdown mode).
-  Suggested slug: snapshop-license  |  Title: SnapShop Terms of Use
-  Final URL example: https://alertcat.info/index.php/snapshop-license.html
--->
+---
+layout: default
+title: Terms of Use
+description: SnapShop Terms of Use for AI camera shopping on Solana
+permalink: /terms/
+---
+
+# Terms of Use
 
 **Last updated:** May 19, 2026
 **Application:** SnapShop (Android, Solana Mobile)
